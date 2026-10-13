@@ -37,6 +37,15 @@ button.action{border:0;border-radius:9px;padding:8px 13px;font-weight:800;font-s
 .note{font-size:13px;color:var(--sub);text-align:center;margin-top:18px}
 .hidden{display:none!important}
 @media(max-width:600px){.card{padding:17px}.grid{grid-template-columns:repeat(5,1fr);gap:7px}.stage{font-size:15px;padding:10px 3px}.stage small{display:none}.token{font-size:16px;padding:9px 11px}}
+
+.authbar{display:flex;align-items:center;justify-content:center;gap:7px;margin-top:10px}
+.authbtn,.logoutbtn{border:1px solid var(--line);background:white;color:var(--ink);border-radius:999px;padding:6px 10px;font-size:10px;font-weight:800;cursor:pointer}
+.authbtn:disabled{opacity:.65;cursor:default}.logoutbtn{color:var(--sub)}
+.authdot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#b8c4d2;margin-right:5px}
+.authdot.ok{background:var(--good)}.authdot.busy{background:#d6a53b}.authdot.error{background:var(--bad)}
+.authnote{font-size:9.5px;color:var(--sub)}
+@media(max-width:600px){.authnote{display:none}}
+
 </style>
 </head>
 <body>
@@ -44,12 +53,13 @@ button.action{border:0;border-radius:9px;padding:8px 13px;font-weight:800;font-s
 <header>
 <h1>Basic Quest</h1>
 <div class="subtitle">WORD ORDER TRAINING · 60 STAGES<br>番号を選んで、4つの英文を完成させよう！</div>
+<div class="authbar"><button id="basicLogin" class="authbtn" type="button" disabled><span id="basicAuthDot" class="authdot busy"></span><span id="basicAuthLabel">認証準備中…</span></button><span id="basicAuthNote" class="authnote">Firebase接続中</span><button id="basicLogout" class="logoutbtn" type="button" hidden>ログアウト</button></div>
 </header>
 
 <section id="selectScreen" class="card">
   <h2>ステージを選択</h2>
   <div id="stageGrid" class="grid"></div>
-  <div class="note">✓ はクリア済みです。進み具合はこのブラウザに保存されます。</div>
+  <div class="note" id="progressSaveNote">✓ はクリア済みです。ログイン時はクラウドにも同期されます。</div>
 </section>
 
 <section id="quizScreen" class="card hidden">
@@ -154,13 +164,135 @@ function checkAnswer(){
   }
 }
 function finishStage(){
+  const newlyCompleted=!completed.has(currentStage.number);
   completed.add(currentStage.number);
   localStorage.setItem("english60_completed",JSON.stringify([...completed]));
+  renderStages();
+  if(newlyCompleted)window.basicQuestCloud?.recordStage?.(currentStage.number);
+  else window.basicQuestCloud?.touch?.();
   document.getElementById("completeText").textContent="Stage "+currentStage.number+"「"+currentStage.word+"」の4問をクリアしました！";
   show("completeScreen");
 }
 function goHome(){currentStage=null;renderStages();show("selectScreen");}
+window.basicQuestBridge={
+  getCompleted:()=>[...completed].sort((a,b)=>a-b),
+  mergeCompleted:(arr)=>{
+    (Array.isArray(arr)?arr:[]).forEach(n=>{n=Number(n);if(n>=1&&n<=60)completed.add(n);});
+    localStorage.setItem("english60_completed",JSON.stringify([...completed]));
+    renderStages();
+    return [...completed].sort((a,b)=>a-b);
+  }
+};
 renderStages();
 </script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js";
+import {
+  getAuth, GoogleAuthProvider, signInWithPopup, signOut,
+  onAuthStateChanged, setPersistence, browserLocalPersistence
+} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js";
+import {
+  getFirestore, doc, getDoc, setDoc, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAllLjPcGhygMSEIORXhKZOaDjYvpSJ4EQ",
+  authDomain: "eiken-retry.firebaseapp.com",
+  projectId: "eiken-retry",
+  storageBucket: "eiken-retry.firebasestorage.app",
+  messagingSenderId: "231308672297",
+  appId: "1:231308672297:web:5e8b8ede3a0246c2318b38",
+  measurementId: "G-8CWR37L5K0"
+};
+
+const fbApp=initializeApp(firebaseConfig);
+const auth=getAuth(fbApp);
+const db=getFirestore(fbApp);
+const provider=new GoogleAuthProvider();
+provider.setCustomParameters({prompt:"select_account"});
+const loginBtn=document.getElementById("basicLogin");
+const logoutBtn=document.getElementById("basicLogout");
+const dot=document.getElementById("basicAuthDot");
+const label=document.getElementById("basicAuthLabel");
+const note=document.getElementById("basicAuthNote");
+const saveNote=document.getElementById("progressSaveNote");
+let currentUser=null;
+let lastPlayedDate="";
+
+function todayKey(){
+  const d=new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+function refFor(user){return doc(db,"users",user.uid,"apps","basic-quest");}
+function shortName(user){
+  const n=(user?.displayName||"").trim();
+  return n?(n.length>10?n.slice(0,10)+"…":n):"ログイン中";
+}
+function setUI(mode,text,sub){
+  dot.className="authdot"+(mode?` ${mode}`:"");
+  label.textContent=text; note.textContent=sub||"";
+}
+async function saveCloud(){
+  if(!currentUser)return;
+  const completed=window.basicQuestBridge.getCompleted();
+  setUI("busy",shortName(currentUser),"保存中…");
+  await setDoc(refFor(currentUser),{
+    completedStages:completed,
+    completedCount:completed.length,
+    lastPlayedDate,
+    clientUpdatedAt:Date.now(),
+    serverUpdatedAt:serverTimestamp()
+  },{merge:true});
+  setUI("ok",shortName(currentUser),`☁ ${completed.length} / 60`);
+  saveNote.textContent=`✓ ${completed.length} / 60 ステージクリア。Googleアカウントに同期済みです。`;
+}
+async function syncCloud(user){
+  const snap=await getDoc(refFor(user));
+  if(snap.exists()){
+    const d=snap.data()||{};
+    window.basicQuestBridge.mergeCompleted(d.completedStages||[]);
+    if(typeof d.lastPlayedDate==="string")lastPlayedDate=d.lastPlayedDate;
+  }
+  await saveCloud();
+}
+window.basicQuestCloud={
+  async recordStage(){
+    lastPlayedDate=todayKey();
+    try{await saveCloud();}catch(e){console.error(e);setUI("error",currentUser?shortName(currentUser):"Googleログイン","保存エラー");}
+  },
+  async touch(){
+    lastPlayedDate=todayKey();
+    try{await saveCloud();}catch(e){console.error(e);}
+  }
+};
+
+loginBtn.addEventListener("click",async()=>{
+  if(currentUser)return;
+  loginBtn.disabled=true; setUI("busy","Googleを開いています…","認証中");
+  try{await signInWithPopup(auth,provider);}
+  catch(e){console.error(e);setUI("error","Googleログイン",e?.code==="auth/popup-blocked"?"ポップアップを許可":"再試行できます");loginBtn.disabled=false;}
+});
+logoutBtn.addEventListener("click",()=>signOut(auth));
+
+try{await setPersistence(auth,browserLocalPersistence);}catch(e){console.error(e);}
+
+onAuthStateChanged(auth,async user=>{
+  currentUser=user||null;
+  if(!user){
+    logoutBtn.hidden=true;loginBtn.disabled=false;
+    const n=window.basicQuestBridge.getCompleted().length;
+    setUI("","Googleログイン",n?`端末: ${n} / 60`:"端末保存");
+    saveNote.textContent=`✓ ${n} / 60 ステージクリア。この端末に保存中。ログインするとクラウド同期できます。`;
+    return;
+  }
+  logoutBtn.hidden=false;loginBtn.disabled=true;
+  setUI("busy",shortName(user),"進捗同期中…");
+  try{await syncCloud(user);}
+  catch(e){console.error(e);setUI("error",shortName(user),"同期エラー");}
+  finally{loginBtn.disabled=false;}
+});
+</script>
+
 </body>
 </html>
