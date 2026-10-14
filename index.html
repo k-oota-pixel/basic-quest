@@ -170,6 +170,7 @@ function finishStage(){
   renderStages();
   if(newlyCompleted)window.basicQuestCloud?.recordStage?.(currentStage.number);
   else window.basicQuestCloud?.touch?.();
+  window.EnglishPlayroomCoins?.awardBasic?.(currentStage.number);
   document.getElementById("completeText").textContent="Stage "+currentStage.number+"「"+currentStage.word+"」の4問をクリアしました！";
   show("completeScreen");
 }
@@ -294,5 +295,6 @@ onAuthStateChanged(auth,async user=>{
 });
 </script>
 
+<script type="module" src="https://k-oota-pixel.github.io/english-playroom/coin-reward.js"></script>
 </body>
 </html>
