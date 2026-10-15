@@ -46,6 +46,14 @@ button.action{border:0;border-radius:9px;padding:8px 13px;font-weight:800;font-s
 .authnote{font-size:9.5px;color:var(--sub)}
 @media(max-width:600px){.authnote{display:none}}
 
+
+/* Correct-answer celebration: quick confetti from both bottom corners. */
+.celebration-layer{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:9999}
+.confetti-piece{position:absolute;bottom:-18px;width:8px;height:14px;border-radius:2px;background:var(--c);opacity:0;transform:translate(0,0) rotate(0deg);animation:confetti-pop .9s cubic-bezier(.18,.75,.28,1) forwards}
+.confetti-piece.left{left:18px}.confetti-piece.right{right:18px}
+@keyframes confetti-pop{0%{opacity:0;transform:translate(0,0) rotate(0deg) scale(.8)}8%{opacity:1}100%{opacity:0;transform:translate(var(--dx),var(--dy)) rotate(var(--rot)) scale(1)}}
+@media(prefers-reduced-motion:reduce){.celebration-layer{display:none}}
+
 </style>
 </head>
 <body>
@@ -147,6 +155,23 @@ function tokenButton(p,inAnswer){
 }
 function resetQuestion(){selected=[];renderTokens();document.getElementById("feedback").textContent="";}
 function canonical(tokens){return tokens.map(normalizeToken).join(" ").replace(/[’]/g,"'").toLowerCase();}
+
+function celebrateCorrect(){
+  if(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)return;
+  const layer=document.createElement('div');layer.className='celebration-layer';layer.setAttribute('aria-hidden','true');
+  const colors=['#f0b83f','#2e9b79','#e56d73','#668de5','#9a6bd1','#f08b4b'];
+  for(const side of ['left','right']){
+    for(let i=0;i<22;i++){
+      const piece=document.createElement('i');piece.className=`confetti-piece ${side}`;
+      const outward=side==='left'?1:-1;
+      const x=outward*(55+Math.random()*210), y=-(95+Math.random()*270);
+      piece.style.setProperty('--dx',`${x}px`);piece.style.setProperty('--dy',`${y}px`);piece.style.setProperty('--rot',`${(Math.random()*900-450)}deg`);piece.style.setProperty('--c',colors[i%colors.length]);piece.style.animationDelay=`${Math.random()*90}ms`;
+      layer.append(piece);
+    }
+  }
+  document.body.append(layer);setTimeout(()=>layer.remove(),1150);
+}
+
 function checkAnswer(){
   const q=currentStage.questions[qIndex];
   const user=selected.map(id=>pieces.find(p=>p.id===id).text);
@@ -154,7 +179,7 @@ function checkAnswer(){
   const fb=document.getElementById("feedback");
   if(user.length!==correct.length){fb.textContent="まだ使っていない単語があります。";fb.className="feedback bad";return;}
   if(canonical(user)===canonical(correct)){
-    fb.textContent="✓ Correct!";fb.className="feedback good";
+    fb.textContent="✓ Correct!";fb.className="feedback good";celebrateCorrect();
     setTimeout(()=>{
       if(qIndex<3){qIndex++;loadQuestion();}
       else finishStage();
