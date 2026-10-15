@@ -13,15 +13,16 @@ jobs:
       - name: Upgrade celebration timing and final burst
         run: |
           python .github/scripts/upgrade-correct-celebration.py
-          node --check <(python - <<'PY'
+          python - <<'PY'
           from pathlib import Path
           import re
           t=Path('index.html').read_text(encoding='utf-8')
           m=re.search(r'<script>(.*?)</script>',t,re.S)
-          print(m.group(1))
+          if not m:
+              raise SystemExit('inline script not found')
+          Path('/tmp/game.js').write_text(m.group(1),encoding='utf-8')
           PY
-          )
-        shell: bash
+          node --check /tmp/game.js
       - name: Commit change and remove one-off files
         run: |
           rm .github/scripts/upgrade-correct-celebration.py .github/workflows/upgrade-correct-celebration.yml
