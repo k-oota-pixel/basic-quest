@@ -25,132 +25,102 @@ jobs:
           if old not in s: raise SystemExit('controls target not found')
           s=s.replace(old,new,1)
 
-          old_state='let currentStage=null, qIndex=0, pieces=[], selected=[];'
-          new_state='let currentStage=null, qIndex=0, pieces=[], selected=[], currentQueue=[], retryQueue=[], initialRound=true, retryRound=0, initialCorrect=0, locked=false;'
-          if old_state not in s: raise SystemExit('state target not found')
-          s=s.replace(old_state,new_state,1)
+          old='let currentStage=null, qIndex=0, pieces=[], selected=[];'
+          new='let currentStage=null, qIndex=0, pieces=[], selected=[], currentQueue=[], retryQueue=[], initialRound=true, retryRound=0, initialCorrect=0, locked=false;'
+          if old not in s: raise SystemExit('state target not found')
+          s=s.replace(old,new,1)
 
           start=s.find('function startStage(n){')
+          end=s.find('function renderTokens(){',start)
+          if start<0 or end<0: raise SystemExit('start/load block not found')
+          new_start='''function startStage(n){
+            currentStage=stages.find(s=>s.number===n);
+            initialRound=true; retryRound=0; initialCorrect=0; retryQueue=[];
+            currentQueue=currentStage.questions.map((q,i)=>({q,index:i}));
+            qIndex=0; show("quizScreen"); loadQuestion();
+          }
+          function playableSentence(q){return q.en.replace(/\\.\\s*$/,"");}
+          function currentItem(){return currentQueue[qIndex];}
+          function setControls(disabled){
+            ["resetBtn","giveupBtn","checkBtn"].forEach(id=>{const el=document.getElementById(id);if(el)el.disabled=disabled;});
+          }
+          function loadQuestion(){
+            const item=currentItem(),q=item.q;
+            locked=false;
+            document.getElementById("word").textContent=currentStage.number+". "+currentStage.word;
+            document.getElementById("progress").textContent=initialRound?(qIndex+1)+" / "+currentQueue.length:"RETRY "+retryRound+" · "+(qIndex+1)+" / "+currentQueue.length;
+            document.getElementById("japanese").textContent=q.ja;
+            document.getElementById("feedback").textContent="";
+            document.getElementById("feedback").className="feedback";
+            selected=[];
+            pieces=shuffle(tokenize(playableSentence(q)).map((text,id)=>({id,text})));
+            setControls(false);
+            renderTokens();
+          }
+          '''
+          s=s[:start]+new_start+s[end:]
+
+          old='const b=document.createElement("button");b.className="token";b.textContent=p.text;\n  b.onclick=()=>{'
+          new='const b=document.createElement("button");b.className="token";b.textContent=p.text;b.disabled=locked;\n  b.onclick=()=>{\n    if(locked)return;'
+          if old not in s: raise SystemExit('token target not found')
+          s=s.replace(old,new,1)
+
+          old='function resetQuestion(){selected=[];renderTokens();document.getElementById("feedback").textContent="";}'
+          new='function resetQuestion(){if(locked)return;selected=[];renderTokens();document.getElementById("feedback").textContent="";}'
+          if old not in s: raise SystemExit('reset target not found')
+          s=s.replace(old,new,1)
+
+          start=s.find('function checkAnswer(){')
           end=s.find('function goHome(){',start)
-          if start<0 or end<0: raise SystemExit('quiz flow block not found')
-          block=r'''function startStage(n){
-  currentStage=stages.find(s=>s.number===n);
-  initialRound=true; retryRound=0; initialCorrect=0; retryQueue=[];
-  currentQueue=currentStage.questions.map((q,i)=>({q,index:i}));
-  qIndex=0; show("quizScreen"); loadQuestion();
-}
-function playableSentence(q){return q.en.replace(/\.\s*$/,"");}
-function currentItem(){return currentQueue[qIndex];}
-function loadQuestion(){
-  const item=currentItem(), q=item.q;
-  locked=false;
-  document.getElementById("word").textContent=currentStage.number+". "+currentStage.word;
-  document.getElementById("progress").textContent=initialRound
-    ? (qIndex+1)+" / "+currentQueue.length
-    : "RETRY "+retryRound+" · "+(qIndex+1)+" / "+currentQueue.length;
-  document.getElementById("japanese").textContent=q.ja;
-  const fb=document.getElementById("feedback");fb.textContent="";fb.className="feedback";
-  selected=[];
-  pieces=shuffle(tokenize(playableSentence(q)).map((text,id)=>({id,text})));
-  setControls(false);
-  renderTokens();
-}
-function setControls(disabled){
-  ["resetBtn","giveupBtn","checkBtn"].forEach(id=>{const el=document.getElementById(id);if(el)el.disabled=disabled;});
-}
-function renderTokens(){
-  const bank=document.getElementById("bank"), ans=document.getElementById("answer");
-  bank.innerHTML=""; ans.innerHTML="";
-  pieces.filter(p=>!selected.includes(p.id)).forEach(p=>bank.appendChild(tokenButton(p,false)));
-  selected.map(id=>pieces.find(p=>p.id===id)).filter(Boolean).forEach(p=>ans.appendChild(tokenButton(p,true)));
-}
-function tokenButton(p,inAnswer){
-  const b=document.createElement("button");b.className="token";b.textContent=p.text;b.disabled=locked;
-  b.onclick=()=>{
-    if(locked)return;
-    if(inAnswer) selected=selected.filter(x=>x!==p.id);
-    else selected.push(p.id);
-    document.getElementById("feedback").textContent="";
-    renderTokens();
-  }; return b;
-}
-function resetQuestion(){if(locked)return;selected=[];renderTokens();document.getElementById("feedback").textContent="";}
-function canonical(tokens){return tokens.map(normalizeToken).join(" ").replace(/[’]/g,"'").toLowerCase();}
-
-function celebrateCorrect(grand=false){
-  if(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)return;
-  const layer=document.createElement('div');layer.className='celebration-layer'+(grand?' grand':'');layer.setAttribute('aria-hidden','true');
-  const colors=['#f0b83f','#2e9b79','#e56d73','#668de5','#9a6bd1','#f08b4b','#ffd86a'];
-  const count=grand?42:24;
-  const duration=grand?'2.8s':'1.9s';
-  for(const side of ['left','right']){
-    for(let i=0;i<count;i++){
-      const piece=document.createElement('i');piece.className=`confetti-piece ${side}`;
-      const outward=side==='left'?1:-1;
-      const x=outward*(50+Math.random()*(grand?330:240)), y=-(110+Math.random()*(grand?440:320));
-      piece.style.setProperty('--dx',`${x}px`);piece.style.setProperty('--dy',`${y}px`);piece.style.setProperty('--rot',`${(Math.random()*1100-550)}deg`);piece.style.setProperty('--c',colors[i%colors.length]);piece.style.setProperty('--dur',duration);piece.style.animationDelay=`${Math.random()*(grand?180:120)}ms`;
-      piece.style.width=`${6+Math.random()*5}px`;piece.style.height=`${10+Math.random()*8}px`;
-      layer.append(piece);
-    }
-    if(grand){
-      for(let i=0;i<7;i++){
-        const spark=document.createElement('b');spark.className=`celebration-spark ${side}`;spark.textContent=i%2?'✦':'★';
-        const outward=side==='left'?1:-1;
-        spark.style.setProperty('--dx',`${outward*(80+Math.random()*300)}px`);spark.style.setProperty('--dy',`${-(180+Math.random()*380)}px`);spark.style.setProperty('--rot',`${Math.random()*360-180}deg`);spark.style.setProperty('--dur','2.8s');spark.style.animationDelay=`${Math.random()*220}ms`;
-        layer.append(spark);
-      }
-    }
-  }
-  document.body.append(layer);setTimeout(()=>layer.remove(),grand?3300:2300);
-}
-
-function checkAnswer(){
-  if(locked)return;
-  const item=currentItem(), q=item.q;
-  const user=selected.map(id=>pieces.find(p=>p.id===id).text);
-  const correct=tokenize(playableSentence(q));
-  const fb=document.getElementById("feedback");
-  if(user.length!==correct.length){fb.textContent="まだ使っていない単語があります。";fb.className="feedback bad";return;}
-  locked=true;setControls(true);renderTokens();
-  if(canonical(user)===canonical(correct)){
-    if(initialRound)initialCorrect++;
-    fb.textContent="✓ Correct!";fb.className="feedback good";celebrateCorrect(false);
-    setTimeout(()=>advanceQuestion(),700);
-  }else{
-    retryQueue.push(item);
-    fb.textContent="もう一度あとで挑戦しよう。 正解："+q.en;fb.className="feedback bad";
-    setTimeout(()=>advanceQuestion(),1100);
-  }
-}
-function giveUp(){
-  if(locked)return;
-  const item=currentItem(),q=item.q;
-  locked=true;setControls(true);retryQueue.push(item);renderTokens();
-  const fb=document.getElementById("feedback");fb.textContent="正解："+q.en+"　あとでもう一度挑戦しよう。";fb.className="feedback bad";
-  setTimeout(()=>advanceQuestion(),1100);
-}
-function advanceQuestion(){
-  if(qIndex<currentQueue.length-1){qIndex++;loadQuestion();return;}
-  if(retryQueue.length){
-    currentQueue=retryQueue;retryQueue=[];qIndex=0;initialRound=false;retryRound++;loadQuestion();return;
-  }
-  finishStage();
-}
-function finishStage(){
-  const newlyCompleted=!completed.has(currentStage.number);
-  completed.add(currentStage.number);
-  localStorage.setItem("english60_completed",JSON.stringify([...completed]));
-  renderStages();
-  if(newlyCompleted)window.basicQuestCloud?.recordStage?.(currentStage.number);
-  else window.basicQuestCloud?.touch?.();
-  const earnedCoin=initialCorrect>=3;
-  if(earnedCoin)window.EnglishPlayroomCoins?.awardBasic?.(currentStage.number);
-  document.getElementById("completeText").textContent="Stage "+currentStage.number+"「"+currentStage.word+"」をクリア！ 初回 "+initialCorrect+" / 4 問正解。"+(earnedCoin?"1コインGET！":"今回はコインなし。");
-  celebrateCorrect(true);
-  show("completeScreen");
-}
-'''
-          s=s[:start]+block+s[end:]
+          if start<0 or end<0: raise SystemExit('answer/finish block not found')
+          new_answer='''function checkAnswer(){
+            if(locked)return;
+            const item=currentItem(),q=item.q;
+            const user=selected.map(id=>pieces.find(p=>p.id===id).text);
+            const correct=tokenize(playableSentence(q));
+            const fb=document.getElementById("feedback");
+            if(user.length!==correct.length){fb.textContent="まだ使っていない単語があります。";fb.className="feedback bad";return;}
+            locked=true;setControls(true);renderTokens();
+            if(canonical(user)===canonical(correct)){
+              if(initialRound)initialCorrect++;
+              fb.textContent="✓ Correct!";fb.className="feedback good";celebrateCorrect(false);
+              setTimeout(()=>advanceQuestion(),700);
+            }else{
+              retryQueue.push(item);
+              fb.textContent="もう一度あとで挑戦しよう。 正解："+q.en;fb.className="feedback bad";
+              setTimeout(()=>advanceQuestion(),1100);
+            }
+          }
+          function giveUp(){
+            if(locked)return;
+            const item=currentItem(),q=item.q;
+            locked=true;setControls(true);retryQueue.push(item);renderTokens();
+            const fb=document.getElementById("feedback");
+            fb.textContent="正解："+q.en+"　あとでもう一度挑戦しよう。";fb.className="feedback bad";
+            setTimeout(()=>advanceQuestion(),1100);
+          }
+          function advanceQuestion(){
+            if(qIndex<currentQueue.length-1){qIndex++;loadQuestion();return;}
+            if(retryQueue.length){
+              currentQueue=retryQueue;retryQueue=[];qIndex=0;initialRound=false;retryRound++;loadQuestion();return;
+            }
+            finishStage();
+          }
+          function finishStage(){
+            const newlyCompleted=!completed.has(currentStage.number);
+            completed.add(currentStage.number);
+            localStorage.setItem("english60_completed",JSON.stringify([...completed]));
+            renderStages();
+            if(newlyCompleted)window.basicQuestCloud?.recordStage?.(currentStage.number);
+            else window.basicQuestCloud?.touch?.();
+            const earnedCoin=initialCorrect>=3;
+            if(earnedCoin)window.EnglishPlayroomCoins?.awardBasic?.(currentStage.number);
+            document.getElementById("completeText").textContent="Stage "+currentStage.number+"「"+currentStage.word+"」をクリア！ 初回 "+initialCorrect+" / 4 問正解。"+(earnedCoin?"1コインGET！":"今回はコインなし。");
+            celebrateCorrect(true);
+            show("completeScreen");
+          }
+          '''
+          s=s[:start]+new_answer+s[end:]
           p.write_text(s,encoding='utf-8')
           PY
       - name: Commit changes
