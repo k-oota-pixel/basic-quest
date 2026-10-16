@@ -84,8 +84,9 @@ button.action{border:0;border-radius:9px;padding:8px 13px;font-weight:800;font-s
   <div id="answer" class="answer"></div>
   <div id="bank" class="bank"></div>
   <div class="controls">
-    <button class="action reset" onclick="resetQuestion()">やり直す</button>
-    <button class="action check" onclick="checkAnswer()">答え合わせ</button>
+    <button class="action reset" id="resetBtn" onclick="resetQuestion()">やり直す</button>
+    <button class="action reset" id="giveupBtn" onclick="giveUp()">わからない</button>
+    <button class="action check" id="checkBtn" onclick="checkAnswer()">答え合わせ</button>
   </div>
   <div id="feedback" class="feedback"></div>
 </section>
@@ -100,7 +101,7 @@ button.action{border:0;border-radius:9px;padding:8px 13px;font-weight:800;font-s
 
 <script>
 const stages = [{"number": 1, "word": "take", "questions": [{"en": "I took an umbrella with me.", "ja": "傘を持って行きました。"}, {"en": "He took a seat near the window.", "ja": "彼は窓の近くに座りました。"}, {"en": "I took a photo of the sunset.", "ja": "夕日の写真を撮りました。"}, {"en": "She took the book from the shelf.", "ja": "彼女は棚から本を取りました。"}]}, {"number": 2, "word": "give", "questions": [{"en": "She gave me a birthday present.", "ja": "彼女は私に誕生日プレゼントをくれました。"}, {"en": "Can you give me a hand?", "ja": "手伝ってくれますか？"}, {"en": "He gave a speech at the meeting.", "ja": "彼は会議でスピーチをしました。"}, {"en": "The teacher gave us homework.", "ja": "先生は私たちに宿題を出しました。"}]}, {"number": 3, "word": "get", "questions": [{"en": "I got a ticket for the concert.", "ja": "コンサートのチケットを手に入れました。"}, {"en": "She got very tired after work.", "ja": "彼女は仕事の後、とても疲れました。"}, {"en": "He got a job at a bank.", "ja": "彼は銀行に就職しました。"}, {"en": "I got the message from him.", "ja": "彼からメッセージを受け取りました。"}]}, {"number": 4, "word": "make", "questions": [{"en": "She made a cake for the party.", "ja": "彼女はパーティーのためにケーキを作りました。"}, {"en": "I made a mistake on the test.", "ja": "テストで間違えました。"}, {"en": "They made him captain of the team.", "ja": "彼らは彼をチームのキャプテンにしました。"}, {"en": "This news made me happy.", "ja": "このニュースは私を幸せにしました。"}]}, {"number": 5, "word": "break", "questions": [{"en": "He broke the window by accident.", "ja": "彼は誤って窓を壊しました。"}, {"en": "I broke my phone yesterday.", "ja": "昨日スマホを壊しました。"}, {"en": "The machine broke during the night.", "ja": "夜の間に機械が壊れました。"}, {"en": "She broke her leg while skiing.", "ja": "スキー中に彼女は足を骨折しました。"}]}, {"number": 6, "word": "cut", "questions": [{"en": "He cut the paper into small pieces.", "ja": "彼は紙を小さく切りました。"}, {"en": "I cut my finger with a knife.", "ja": "ナイフで指を切りました。"}, {"en": "She cut her hair short.", "ja": "彼女は髪を短く切りました。"}, {"en": "Please cut the cake into eight pieces.", "ja": "ケーキを8つに切ってください。"}]}, {"number": 7, "word": "go", "questions": [{"en": "I go to school by bus.", "ja": "私はバスで学校へ行きます。"}, {"en": "He went home early yesterday.", "ja": "彼は昨日早く帰宅しました。"}, {"en": "Let's go shopping this afternoon.", "ja": "今日の午後、買い物に行きましょう。"}, {"en": "She goes to the gym every morning.", "ja": "彼女は毎朝ジムに通っています。"}]}, {"number": 8, "word": "come", "questions": [{"en": "Please come to my party!", "ja": "私のパーティーに来てください！"}, {"en": "He came home late last night.", "ja": "彼は昨晩遅く帰宅しました。"}, {"en": "A new idea came to me.", "ja": "新しいアイデアが浮かびました。"}, {"en": "She comes from Canada.", "ja": "彼女はカナダ出身です。"}]}, {"number": 9, "word": "leave", "questions": [{"en": "I left my keys on the table.", "ja": "テーブルの上に鍵を置き忘れました。"}, {"en": "He left the room without saying anything.", "ja": "彼は何も言わずに部屋を出ました。"}, {"en": "She left her umbrella at school.", "ja": "彼女は学校に傘を置き忘れました。"}, {"en": "I left early to catch the train.", "ja": "電車に間に合うよう早めに出発しました。"}]}, {"number": 10, "word": "run", "questions": [{"en": "He runs every morning.", "ja": "彼は毎朝走ります。"}, {"en": "The dog ran into the yard.", "ja": "犬が庭に走り込みました。"}, {"en": "I ran a marathon last year.", "ja": "去年マラソンを走りました。"}, {"en": "She ran to catch the bus.", "ja": "彼女はバスに間に合うよう走りました。"}]}, {"number": 11, "word": "catch", "questions": [{"en": "I caught a cold last week.", "ja": "先週風邪をひきました。"}, {"en": "He caught the ball easily.", "ja": "彼は簡単にボールをキャッチしました。"}, {"en": "She caught a taxi to the station.", "ja": "彼女は駅までタクシーに乗りました。"}, {"en": "I caught the train just in time.", "ja": "私はぎりぎりで電車に間に合いました。"}]}, {"number": 12, "word": "do", "questions": [{"en": "I do my homework after dinner.", "ja": "夕食後に宿題をします。"}, {"en": "She does yoga every morning.", "ja": "彼女は毎朝ヨガをします。"}, {"en": "He did his best in the game.", "ja": "彼は試合でベストを尽くしました。"}, {"en": "We did a lot of work today.", "ja": "今日はたくさんの仕事をしました。"}]}, {"number": 13, "word": "be動詞「=」", "questions": [{"en": "It's 10 am.", "ja": "午前10時です。"}, {"en": "We are high school students.", "ja": "私たちは高校生です。"}, {"en": "My birthday is August 10th.", "ja": "私の誕生日は8月10日です。"}, {"en": "I'm sixteen years old.", "ja": "私は16歳です。"}]}, {"number": 14, "word": "be動詞「状態」", "questions": [{"en": "He is busy now.", "ja": "彼は今忙しいです。"}, {"en": "She was absent yesterday.", "ja": "彼女は昨日欠席しました。"}, {"en": "We're tired.", "ja": "私たちは疲れています。"}, {"en": "I was thirsty then.", "ja": "私はその時、喉が渇いていました。"}]}, {"number": 15, "word": "be動詞「前置詞」", "questions": [{"en": "I'm home.", "ja": "ただいま。"}, {"en": "I'm on the bus now.", "ja": "今バスに乗っています。"}, {"en": "We are in the baseball club.", "ja": "私たちは野球部に所属しています。"}, {"en": "The book is on the table.", "ja": "その本はテーブルの上にあります。"}]}, {"number": 16, "word": "be動詞「進行形」", "questions": [{"en": "They are playing baseball now.", "ja": "彼らは今野球をしています。"}, {"en": "I was taking a bath when you called me.", "ja": "あなたが電話したとき、私はお風呂に入っていました。"}, {"en": "What are you doing now?", "ja": "今、何をしていますか？"}, {"en": "Children are swimming in the pool now.", "ja": "子どもたちは今プールで泳いでいます。"}]}, {"number": 17, "word": "be動詞「受け身」", "questions": [{"en": "English is spoken all over the world.", "ja": "英語は世界中で話されています。"}, {"en": "This house was built last year.", "ja": "この家は去年建てられました。"}, {"en": "Where were these cookies made?", "ja": "これらのクッキーはどこで作られましたか？"}, {"en": "Soccer is played in many countries.", "ja": "サッカーは多くの国でプレーされています。"}]}, {"number": 18, "word": "have「完了」", "questions": [{"en": "I have just finished my homework.", "ja": "私はちょうど宿題を終えました。"}, {"en": "Have you ever seen a UFO?", "ja": "あなたは今までにUFOを見たことがありますか？"}, {"en": "He has lived in Tokyo for ten years.", "ja": "彼は東京に10年間住んでいます。"}, {"en": "It has been raining since last night.", "ja": "昨夜からずっと雨が降っています。"}]}, {"number": 19, "word": "have「have to」", "questions": [{"en": "She has to take medicine every day.", "ja": "彼女は毎日薬を飲まなければなりません。"}, {"en": "I have to get up early tomorrow.", "ja": "私は明日早く起きなければなりません。"}, {"en": "You don’t have to bring your lunch.", "ja": "お弁当を持ってくる必要はありません。"}, {"en": "They have to be quiet in the library.", "ja": "彼らは図書館では静かにしなければなりません。"}]}, {"number": 20, "word": "have「使役」", "questions": [{"en": "I had him wash my car.", "ja": "私は彼に車を洗ってもらいました。"}, {"en": "I had my mom cut my hair.", "ja": "私は母に髪を切ってもらいました。"}, {"en": "He had his friend take a photo.", "ja": "彼は友達に写真を撮ってもらいました。"}, {"en": "She had her brother carry her bag.", "ja": "彼女は弟にカバンを運んでもらいました。"}]}, {"number": 21, "word": "have「持つ」", "questions": [{"en": "Do you have a pen?", "ja": "ペンを持っていますか？"}, {"en": "She has long hair.", "ja": "彼女は髪が長いです。"}, {"en": "I had a good time in Okinawa.", "ja": "私は沖縄で楽しい時間を過ごしました。"}, {"en": "We have a party tonight.", "ja": "私たちは今夜パーティーをします。"}]}, {"number": 22, "word": "have「ちょっと癖」", "questions": [{"en": "I have a boyfriend now.", "ja": "私は今、彼氏がいます。"}, {"en": "Do you have the time?", "ja": "今何時かわかりますか？"}, {"en": "I have a headache.", "ja": "頭が痛いです。"}, {"en": "Have a nice weekend!", "ja": "良い週末を！"}]}, {"number": 23, "word": "hold", "questions": [{"en": "She held the baby gently in her arms.", "ja": "彼女は赤ちゃんを優しく腕に抱いた。"}, {"en": "Can you hold this door open for me?", "ja": "このドアを押さえておいてくれる？"}, {"en": "The company will hold a meeting tomorrow.", "ja": "会社は明日会議を開く予定だ。"}, {"en": "I can't hold my laughter any longer.", "ja": "もう笑いをこらえられない。"}]}, {"number": 24, "word": "keep", "questions": [{"en": "Please keep the noise down.", "ja": "音を小さくしていてください。"}, {"en": "I keep all my old letters in a box.", "ja": "古い手紙は全部箱にしまってある。"}, {"en": "She kept me waiting for an hour.", "ja": "彼女は私を１時間も待たせた。"}, {"en": "You should keep away from the fire.", "ja": "火から離れていなさい。"}]}, {"number": 25, "word": "put", "questions": [{"en": "Put the keys on the table.", "ja": "鍵をテーブルの上に置いてください。"}, {"en": "He put sugar in his coffee.", "ja": "彼はコーヒーに砂糖を入れた。"}, {"en": "She put all her energy into the project.", "ja": "彼女はプロジェクトに全力を注いだ。"}, {"en": "How do you put this idea into words?", "ja": "この考えをどう言葉にしますか？"}]}, {"number": 26, "word": "set", "questions": [{"en": "She set the glass on the shelf.", "ja": "彼女はグラスを棚に置いた。"}, {"en": "The sun sets around 6 p.m. in winter.", "ja": "冬は午後6時ごろに日が沈む。"}, {"en": "We set a deadline for the project.", "ja": "私たちはプロジェクトの締切を設定した。"}, {"en": "He set the alarm for 7 a.m.", "ja": "彼は目覚ましを午前7時にセットした。"}]}, {"number": 27, "word": "bring", "questions": [{"en": "Could you bring me a glass of water?", "ja": "水を一杯持ってきてくれますか？"}, {"en": "This news brought me great joy.", "ja": "このニュースは私に大きな喜びをもたらした。"}, {"en": "Bring your own lunch to the picnic.", "ja": "ピクニックには自分のお弁当を持参してください。"}, {"en": "His speech brought tears to my eyes.", "ja": "彼のスピーチで私は涙が出た。"}]}, {"number": 28, "word": "carry", "questions": [{"en": "He carried the heavy box up the stairs.", "ja": "彼は重い箱を階段の上まで運んだ。"}, {"en": "The store carries a wide selection of wines.", "ja": "その店は豊富な種類のワインを取り扱っている。"}, {"en": "She always carries a small notebook in her bag.", "ja": "彼女はいつもカバンに小さなノートを入れている。"}, {"en": "His voice carries well across the room.", "ja": "彼の声は部屋中によく響く。"}]}, {"number": 29, "word": "look", "questions": [{"en": "Look at the cat in the tree!", "ja": "木の上の猫を見て！"}, {"en": "You look happy today.", "ja": "今日はうれしそうだね。"}, {"en": "I will look for my keys.", "ja": "カギを探します。"}, {"en": "She looks after her little brother.", "ja": "彼女は弟の世話をしている。"}]}, {"number": 30, "word": "see", "questions": [{"en": "I see many birds in the park.", "ja": "公園でたくさんの鳥が見える。"}, {"en": "I will see the doctor tomorrow.", "ja": "明日お医者さんに行きます。"}, {"en": "I can see your point.", "ja": "あなたの言いたいことがわかるよ。"}, {"en": "Please see that the door is closed.", "ja": "ドアが閉まっているか確かめてください。"}]}, {"number": 31, "word": "listen", "questions": [{"en": "Listen to the teacher carefully.", "ja": "先生の話をよく聞きなさい。"}, {"en": "She listened for the phone to ring.", "ja": "彼女は電話が鳴るのを耳を澄ませて待った。"}, {"en": "You should listen to your parents.", "ja": "親の言うことを聞くべきだよ。"}, {"en": "I like to listen to music at night.", "ja": "夜に音楽を聴くのが好きです。"}]}, {"number": 32, "word": "hear", "questions": [{"en": "I can hear birds singing.", "ja": "鳥がさえずるのが聞こえる。"}, {"en": "Did you hear the news?", "ja": "ニュースを聞いた？"}, {"en": "I heard him out.", "ja": "私は彼の話を最後まで聞いた。"}, {"en": "I hear you are moving.", "ja": "引っ越すって聞いたよ。"}]}, {"number": 33, "word": "speak", "questions": [{"en": "He speaks English and Spanish.", "ja": "彼は英語とスペイン語を話します。"}, {"en": "May I speak to Mr. Brown?", "ja": "ブラウンさんと話せますか？"}, {"en": "I spoke with her yesterday.", "ja": "私は昨日彼女と話しました。"}, {"en": "The speaker spoke for an hour.", "ja": "スピーカーは1時間話しました。"}]}, {"number": 34, "word": "talk", "questions": [{"en": "Let's talk after class.", "ja": "授業のあとで話そう。"}, {"en": "She talked me into joining the club.", "ja": "彼女は私を説得してクラブに入れた。"}, {"en": "We talked about our plans.", "ja": "私たちは計画について話した。"}, {"en": "Stop talking nonsense!", "ja": "ばかなことを言うな！"}]}, {"number": 35, "word": "say", "questions": [{"en": "He said he was tired.", "ja": "彼は疲れたと言った。"}, {"en": "What did she say?", "ja": "彼女は何と言ったの？"}, {"en": "Please say hello to your parents.", "ja": "ご両親によろしく言ってね。"}, {"en": "The weather report says it will rain in the afternoon.", "ja": "時計は3時を示している。"}]}, {"number": 36, "word": "tell", "questions": [{"en": "Please tell me your name.", "ja": "あなたの名前を教えてください。"}, {"en": "He told a funny story.", "ja": "彼は面白い話をした。"}, {"en": "She told me to sit down.", "ja": "彼女は私に座るように言った。"}, {"en": "I can tell you are tired.", "ja": "君が疲れているのがわかる。"}]}, {"number": 37, "word": "push", "questions": [{"en": "Push the door to open it.", "ja": "ドアを押して開けてください。"}, {"en": "She pushed me to study harder.", "ja": "彼女は私にもっと勉強するよう励ました。"}, {"en": "The baby pushed the ball across the floor.", "ja": "赤ちゃんはボールを床に押して転がした。"}, {"en": "Don't push yourself too hard.", "ja": "無理をしすぎないで。"}]}, {"number": 38, "word": "pull", "questions": [{"en": "Pull the door to open it.", "ja": "ドアを引いて開けてください。"}, {"en": "The horse pulled the cart.", "ja": "馬は荷車を引いた。"}, {"en": "He pulled me out of the water.", "ja": "彼は私を水の中から引っ張り出した。"}, {"en": "Pull your chair closer.", "ja": "椅子をもっと近くに引いて。"}]}, {"number": 39, "word": "draw", "questions": [{"en": "She can draw beautiful pictures.", "ja": "彼女は美しい絵を描ける。"}, {"en": "Please draw a line on the paper.", "ja": "紙に線を引いてください。"}, {"en": "The teacher drew a smile from the students.", "ja": "先生は生徒たちから笑顔を引き出した。"}, {"en": "The knight drew his sword.", "ja": "騎士は剣を抜いた。"}]}, {"number": 40, "word": "close", "questions": [{"en": "Close the window, please.", "ja": "窓を閉めてください。"}, {"en": "The shop closes at 8 p.m.", "ja": "その店は午後8時に閉まります。"}, {"en": "She closed her eyes and smiled.", "ja": "彼女は目を閉じてほほえんだ。"}, {"en": "We are close friends.", "ja": "私たちは親しい友達です。"}]}, {"number": 41, "word": "shut", "questions": [{"en": "Shut the door quietly.", "ja": "ドアを静かに閉めて。"}, {"en": "He shut his book and stood up.", "ja": "彼は本を閉じて立ち上がった。"}, {"en": "The factory shut down last year.", "ja": "その工場は去年閉鎖された。"}, {"en": "I shut myself in my room.", "ja": "私は部屋に閉じこもった。"}]}, {"number": 42, "word": "fall", "questions": [{"en": "The leaves fall in autumn.", "ja": "秋に葉が落ちる。"}, {"en": "I fell down the stairs.", "ja": "階段から落ちた。"}, {"en": "He fell in love with her.", "ja": "彼は彼女に恋をした。"}, {"en": "Prices are falling.", "ja": "物価が下がっている。"}]}, {"number": 43, "word": "drop", "questions": [{"en": "I dropped my phone.", "ja": "携帯を落とした。"}, {"en": "Drop your homework on my desk.", "ja": "宿題を机に置いていってね。"}, {"en": "The temperature dropped quickly.", "ja": "気温が急に下がった。"}, {"en": "She dropped out of school.", "ja": "彼女は学校を中退した。"}]}, {"number": 44, "word": "lift", "questions": [{"en": "He lifted the curtain to see outside.", "ja": "彼は外を見るためにカーテンを持ち上げた。"}, {"en": "He lifted the heavy box easily.", "ja": "彼はその重い箱を簡単に持ち上げた。"}, {"en": "The fog lifted in the morning.", "ja": "朝に霧が晴れた。"}, {"en": "Her words lifted my spirits.", "ja": "彼女の言葉は私の気持ちを明るくした。"}]}, {"number": 45, "word": "raise", "questions": [{"en": "Raise your hand, please.", "ja": "手を挙げてください。"}, {"en": "They raised money for the hospital.", "ja": "彼らは病院のために資金を集めた。"}, {"en": "She raised her voice.", "ja": "彼女は声を大きくした。"}, {"en": "He was raised in a small town.", "ja": "彼は小さな町で育った。"}]}, {"number": 46, "word": "stay", "questions": [{"en": "Stay here until I come back.", "ja": "私が戻るまでここにいて。"}, {"en": "We stayed at a hotel.", "ja": "私たちはホテルに泊まった。"}, {"en": "Stay calm in an emergency.", "ja": "緊急時には落ち着いて。"}, {"en": "It stayed sunny all day.", "ja": "1日中晴れていた。"}]}, {"number": 47, "word": "clear", "questions": [{"en": "The sky is clear today.", "ja": "今日は空が晴れている。"}, {"en": "Please clear the table after dinner.", "ja": "夕食後にテーブルを片付けてください。"}, {"en": "I need to clear my mind.", "ja": "頭をすっきりさせたい。"}, {"en": "He cleared the fence easily.", "ja": "彼はフェンスを軽々と飛び越えた。"}]}, {"number": 48, "word": "clean", "questions": [{"en": "I clean my room every Sunday.", "ja": "毎週日曜日に部屋を掃除する。"}, {"en": "She cleaned the kitchen.", "ja": "彼女は台所を掃除した。"}, {"en": "He cleaned his shoes before the party.", "ja": "彼はパーティーの前に靴をきれいにした。"}, {"en": "The river is very clean.", "ja": "その川はとてもきれいだ。"}]}, {"number": 49, "word": "think", "questions": [{"en": "I think it's going to rain.", "ja": "私は雨が降りそうだと思う。"}, {"en": "She thinks about her family every day.", "ja": "彼女は毎日家族のことを考えている。"}, {"en": "He thought the movie was interesting.", "ja": "彼はその映画が面白いと思った。"}, {"en": "What do you think of this idea?", "ja": "このアイデアについてどう思いますか？"}]}, {"number": 50, "word": "buy", "questions": [{"en": "I want to buy a new phone.", "ja": "私は新しい電話を買いたい。"}, {"en": "She bought a gift for her friend.", "ja": "彼女は友達にプレゼントを買った。"}, {"en": "They are going to buy some groceries.", "ja": "彼らは食料品を買いに行く予定です。"}, {"en": "Did you buy the tickets yet?", "ja": "もうチケットを買いましたか？"}]}, {"number": 51, "word": "want", "questions": [{"en": "I want a new bike.", "ja": "私は新しい自転車がほしいです。"}, {"en": "She wants to visit Paris.", "ja": "彼女はパリを訪れたがっています。"}, {"en": "They want you to join the team.", "ja": "彼らはあなたにチームに加わってほしいと思っています。"}, {"en": "I don't want to be late.", "ja": "私は遅れたくありません。"}]}, {"number": 52, "word": "show", "questions": [{"en": "He showed me his new phone.", "ja": "彼は私に新しい携帯電話を見せてくれました。"}, {"en": "She showed great courage.", "ja": "彼女は大きな勇気を見せました。"}, {"en": "Please show me the way.", "ja": "道を教えてください。"}, {"en": "The results show that we are improving.", "ja": "結果は私たちが成長していることを示しています。"}]}, {"number": 53, "word": "ask", "questions": [{"en": "Can I ask you a question?", "ja": "質問してもいいですか？"}, {"en": "She asked me to help her.", "ja": "彼女は私に助けを求めました。"}, {"en": "He asked about my family.", "ja": "彼は私の家族について尋ねました。"}, {"en": "Ask your teacher if you don't understand.", "ja": "わからなかったら先生に聞いてください。"}]}, {"number": 54, "word": "work", "questions": [{"en": "I work in a bank.", "ja": "私は銀行で働いています。"}, {"en": "He worked very hard today.", "ja": "彼は今日とても一生懸命働きました。"}, {"en": "We are working on a new project.", "ja": "私たちは新しいプロジェクトに取り組んでいます。"}, {"en": "She worked as a nurse for many years.", "ja": "彼女は何年も看護師として働きました。"}]}, {"number": 55, "word": "try", "questions": [{"en": "I tried to open the door.", "ja": "ドアを開けようとしました。"}, {"en": "She tried a new recipe.", "ja": "彼女は新しいレシピを試しました。"}, {"en": "Try not to be late.", "ja": "遅れないようにしてください。"}, {"en": "He tried his best.", "ja": "彼はベストを尽くしました。"}]}, {"number": 56, "word": "mean", "questions": [{"en": "What does this word mean?", "ja": "この単語はどういう意味ですか？"}, {"en": "I didn't mean to hurt you.", "ja": "傷つけるつもりはありませんでした。"}, {"en": "This song means a lot to me.", "ja": "この歌は私にとってとても大切です。"}, {"en": "She means well.", "ja": "彼女は善意でしているのです。"}]}, {"number": 57, "word": "know", "questions": [{"en": "I know the answer.", "ja": "私は答えを知っています。"}, {"en": "Do you know him?", "ja": "あなたは彼を知っていますか？"}, {"en": "She knows a lot about music.", "ja": "彼女は音楽についてたくさん知っています。"}, {"en": "I don't know what to do.", "ja": "何をすればいいのかわかりません。"}]}, {"number": 58, "word": "stop", "questions": [{"en": "Please stop talking.", "ja": "話すのをやめてください。"}, {"en": "The rain stopped.", "ja": "雨がやみました。"}, {"en": "He stopped the car.", "ja": "彼は車を止めました。"}, {"en": "I stopped to buy some coffee.", "ja": "私はコーヒーを買うために立ち寄りました。"}]}, {"number": 59, "word": "feel", "questions": [{"en": "I feel happy today.", "ja": "私は今日幸せに感じます。"}, {"en": "She feels tired.", "ja": "彼女は疲れを感じています。"}, {"en": "I feel like eating pizza.", "ja": "ピザを食べたい気分です。"}, {"en": "He felt a pain in his leg.", "ja": "彼は足に痛みを感じました。"}]}, {"number": 60, "word": "start", "questions": [{"en": "I started reading a new book.", "ja": "私は新しい本を読み始めました。"}, {"en": "He started to run faster.", "ja": "彼はもっと速く走り始めました。"}, {"en": "Let's start the meeting now.", "ja": "今、会議を始めましょう。"}, {"en": "She started crying suddenly.", "ja": "彼女は突然泣き出しました。"}]}];
-let currentStage=null, qIndex=0, pieces=[], selected=[];
+let currentStage=null, qIndex=0, pieces=[], selected=[], currentQueue=[], retryQueue=[], initialRound=true, retryRound=0, initialCorrect=0, locked=false;
 const completed = new Set(JSON.parse(localStorage.getItem("english60_completed") || "[]"));
 
 function normalizeToken(t){return t.replace(/[.!?,]$/,"");}
@@ -128,17 +129,27 @@ function show(id){
   ["selectScreen","quizScreen","completeScreen"].forEach(x=>document.getElementById(x).classList.toggle("hidden",x!==id));
 }
 function startStage(n){
-  currentStage=stages.find(s=>s.number===n); qIndex=0; show("quizScreen"); loadQuestion();
+  currentStage=stages.find(s=>s.number===n);
+  initialRound=true; retryRound=0; initialCorrect=0; retryQueue=[];
+  currentQueue=currentStage.questions.map((q,i)=>({q,index:i}));
+  qIndex=0; show("quizScreen"); loadQuestion();
+}
+function playableSentence(q){return q.en.replace(/\.\s*$/,"");}
+function currentItem(){return currentQueue[qIndex];}
+function setControls(disabled){
+  ["resetBtn","giveupBtn","checkBtn"].forEach(id=>{const el=document.getElementById(id);if(el)el.disabled=disabled;});
 }
 function loadQuestion(){
-  const q=currentStage.questions[qIndex];
+  const item=currentItem(),q=item.q;
+  locked=false;
   document.getElementById("word").textContent=currentStage.number+". "+currentStage.word;
-  document.getElementById("progress").textContent=(qIndex+1)+" / 4";
+  document.getElementById("progress").textContent=initialRound?(qIndex+1)+" / "+currentQueue.length:"RETRY "+retryRound+" · "+(qIndex+1)+" / "+currentQueue.length;
   document.getElementById("japanese").textContent=q.ja;
   document.getElementById("feedback").textContent="";
   document.getElementById("feedback").className="feedback";
   selected=[];
-  pieces=shuffle(tokenize(q.en).map((text,id)=>({id,text})));
+  pieces=shuffle(tokenize(playableSentence(q)).map((text,id)=>({id,text})));
+  setControls(false);
   renderTokens();
 }
 function renderTokens(){
@@ -148,15 +159,16 @@ function renderTokens(){
   selected.map(id=>pieces.find(p=>p.id===id)).filter(Boolean).forEach(p=>ans.appendChild(tokenButton(p,true)));
 }
 function tokenButton(p,inAnswer){
-  const b=document.createElement("button");b.className="token";b.textContent=p.text;
+  const b=document.createElement("button");b.className="token";b.textContent=p.text;b.disabled=locked;
   b.onclick=()=>{
+    if(locked)return;
     if(inAnswer) selected=selected.filter(x=>x!==p.id);
     else selected.push(p.id);
     document.getElementById("feedback").textContent="";
     renderTokens();
   }; return b;
 }
-function resetQuestion(){selected=[];renderTokens();document.getElementById("feedback").textContent="";}
+function resetQuestion(){if(locked)return;selected=[];renderTokens();document.getElementById("feedback").textContent="";}
 function canonical(tokens){return tokens.map(normalizeToken).join(" ").replace(/[’]/g,"'").toLowerCase();}
 
 function celebrateCorrect(grand=false){
@@ -187,20 +199,37 @@ function celebrateCorrect(grand=false){
 }
 
 function checkAnswer(){
-  const q=currentStage.questions[qIndex];
+  if(locked)return;
+  const item=currentItem(),q=item.q;
   const user=selected.map(id=>pieces.find(p=>p.id===id).text);
-  const correct=tokenize(q.en);
+  const correct=tokenize(playableSentence(q));
   const fb=document.getElementById("feedback");
   if(user.length!==correct.length){fb.textContent="まだ使っていない単語があります。";fb.className="feedback bad";return;}
+  locked=true;setControls(true);renderTokens();
   if(canonical(user)===canonical(correct)){
-    fb.textContent="✓ Correct!";fb.className="feedback good";celebrateCorrect(qIndex===3);
-    setTimeout(()=>{
-      if(qIndex<3){qIndex++;loadQuestion();}
-      else finishStage();
-    },700);
+    if(initialRound)initialCorrect++;
+    fb.textContent="✓ Correct!";fb.className="feedback good";celebrateCorrect(false);
+    setTimeout(()=>advanceQuestion(),700);
   }else{
-    fb.textContent="もう一度！ 語順を見直してみよう。";fb.className="feedback bad";
+    retryQueue.push(item);
+    fb.textContent="もう一度あとで挑戦しよう。 正解："+q.en;fb.className="feedback bad";
+    setTimeout(()=>advanceQuestion(),1100);
   }
+}
+function giveUp(){
+  if(locked)return;
+  const item=currentItem(),q=item.q;
+  locked=true;setControls(true);retryQueue.push(item);renderTokens();
+  const fb=document.getElementById("feedback");
+  fb.textContent="正解："+q.en+"　あとでもう一度挑戦しよう。";fb.className="feedback bad";
+  setTimeout(()=>advanceQuestion(),1100);
+}
+function advanceQuestion(){
+  if(qIndex<currentQueue.length-1){qIndex++;loadQuestion();return;}
+  if(retryQueue.length){
+    currentQueue=retryQueue;retryQueue=[];qIndex=0;initialRound=false;retryRound++;loadQuestion();return;
+  }
+  finishStage();
 }
 function finishStage(){
   const newlyCompleted=!completed.has(currentStage.number);
@@ -209,8 +238,10 @@ function finishStage(){
   renderStages();
   if(newlyCompleted)window.basicQuestCloud?.recordStage?.(currentStage.number);
   else window.basicQuestCloud?.touch?.();
-  window.EnglishPlayroomCoins?.awardBasic?.(currentStage.number);
-  document.getElementById("completeText").textContent="Stage "+currentStage.number+"「"+currentStage.word+"」の4問をクリアしました！";
+  const earnedCoin=initialCorrect>=3;
+  if(earnedCoin)window.EnglishPlayroomCoins?.awardBasic?.(currentStage.number);
+  document.getElementById("completeText").textContent="Stage "+currentStage.number+"「"+currentStage.word+"」をクリア！ 初回 "+initialCorrect+" / 4 問正解。"+(earnedCoin?"1コインGET！":"今回はコインなし。");
+  celebrateCorrect(true);
   show("completeScreen");
 }
 function goHome(){currentStage=null;renderStages();show("selectScreen");}
