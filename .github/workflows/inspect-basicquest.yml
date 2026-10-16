@@ -1,4 +1,4 @@
-name: Inspect BasicQuest flow
+name: Validate BasicQuest retry flow
 
 on:
   push:
@@ -9,20 +9,22 @@ permissions:
   contents: read
 
 jobs:
-  inspect:
+  validate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Show quiz flow
+      - name: Validate quiz script
         run: |
           python - <<'PY'
           from pathlib import Path
+          import re
           s=Path('index.html').read_text(encoding='utf-8')
-          for needle in ['let currentStage','function startStage','function loadQuestion','function checkAnswer','function nextQuestion','function completeStage','awardBasic','recordClear']:
-              print('\n###',needle)
-              i=s.find(needle)
-              if i<0:
-                  print('NOT FOUND')
-              else:
-                  print(s[max(0,i-500):i+2500])
+          m=re.search(r'<script>\s*(.*?)\s*</script>',s,re.S)
+          if not m: raise SystemExit('main script not found')
+          Path('/tmp/basic.js').write_text(m.group(1),encoding='utf-8')
+          required=['function giveUp()','function advanceQuestion()','initialCorrect>=3','playableSentence(q)','RETRY ']
+          missing=[x for x in required if x not in s]
+          if missing: raise SystemExit('missing: '+repr(missing))
+          print('Required BasicQuest retry features found')
           PY
+          node --check /tmp/basic.js
