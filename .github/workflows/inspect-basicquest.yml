@@ -1,0 +1,28 @@
+name: Inspect BasicQuest flow
+
+on:
+  push:
+    paths:
+      - '.github/workflows/inspect-basicquest.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show quiz flow
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          for needle in ['let currentStage','function startStage','function loadQuestion','function checkAnswer','function nextQuestion','function completeStage','awardBasic','recordClear']:
+              print('\n###',needle)
+              i=s.find(needle)
+              if i<0:
+                  print('NOT FOUND')
+              else:
+                  print(s[max(0,i-500):i+2500])
+          PY
