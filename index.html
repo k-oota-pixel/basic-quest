@@ -94,6 +94,9 @@ button.action{border:0;border-radius:9px;padding:8px 13px;font-weight:800;font-s
     <button class="action check" id="checkBtn" onclick="checkAnswer()">答え合わせ</button>
   </div>
   <div id="feedback" class="feedback"></div>
+  <div class="controls">
+    <button class="action check hidden" id="nextBtn" type="button" onclick="continueAfterAnswer()">次の問題へ進む</button>
+  </div>
 </section>
 
 <section id="completeScreen" class="card complete hidden">
@@ -144,9 +147,24 @@ function currentItem(){return currentQueue[qIndex];}
 function setControls(disabled){
   ["resetBtn","giveupBtn","checkBtn"].forEach(id=>{const el=document.getElementById(id);if(el)el.disabled=disabled;});
 }
+function showNextButton(){
+  const next=document.getElementById("nextBtn");
+  if(!next)return;
+  next.classList.remove("hidden");
+  next.disabled=false;
+}
+function continueAfterAnswer(){
+  const next=document.getElementById("nextBtn");
+  if(!next||next.disabled)return;
+  next.disabled=true;
+  next.classList.add("hidden");
+  advanceQuestion();
+}
 function loadQuestion(){
   const item=currentItem(),q=item.q;
   locked=false;
+  const next=document.getElementById("nextBtn");
+  if(next){next.classList.add("hidden");next.disabled=false;}
   document.getElementById("word").textContent=currentStage.number+". "+currentStage.word;
   document.getElementById("progress").textContent=initialRound?(qIndex+1)+" / "+currentQueue.length:"RETRY "+retryRound+" · "+(qIndex+1)+" / "+currentQueue.length;
   document.getElementById("japanese").textContent=q.ja;
@@ -218,7 +236,7 @@ function checkAnswer(){
   }else{
     retryQueue.push(item);
     fb.textContent="もう一度あとで挑戦しよう。 正解："+q.en;fb.className="feedback bad";
-    setTimeout(()=>advanceQuestion(),1100);
+    showNextButton();
   }
 }
 function giveUp(){
@@ -227,7 +245,7 @@ function giveUp(){
   locked=true;setControls(true);retryQueue.push(item);renderTokens();
   const fb=document.getElementById("feedback");
   fb.textContent="正解："+q.en+"　あとでもう一度挑戦しよう。";fb.className="feedback bad";
-  setTimeout(()=>advanceQuestion(),1100);
+  showNextButton();
 }
 function advanceQuestion(){
   if(qIndex<currentQueue.length-1){qIndex++;loadQuestion();return;}
