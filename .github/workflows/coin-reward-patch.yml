@@ -1,4 +1,4 @@
-name: Apply coin rewards
+name: Apply Basic Quest patches
 
 on:
   push:
@@ -13,20 +13,66 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Patch Basic Quest coin reward
+      - name: Patch Basic Quest behavior
         run: |
           python - <<'PY'
           from pathlib import Path
+
           p=Path('index.html')
           s=p.read_text(encoding='utf-8')
+
+          # Keep the shared coin reward script connected.
           tag='<script type="module" src="https://k-oota-pixel.github.io/english-playroom/coin-reward.js"></script>'
           if tag not in s:
               s=s.replace('</body>',tag+'\n</body>')
-          needle='''  if(newlyCompleted)window.basicQuestCloud?.recordStage?.(currentStage.number);\n  else window.basicQuestCloud?.touch?.();'''
-          repl=needle+'''\n  window.EnglishPlayroomCoins?.awardBasic?.(currentStage.number);'''
+
+          coin_needle='''  if(newlyCompleted)window.basicQuestCloud?.recordStage?.(currentStage.number);\n  else window.basicQuestCloud?.touch?.();'''
+          coin_repl=coin_needle+'''\n  window.EnglishPlayroomCoins?.awardBasic?.(currentStage.number);'''
           if 'awardBasic?.(currentStage.number)' not in s:
-              if needle not in s: raise SystemExit('finishStage hook target not found')
-              s=s.replace(needle,repl,1)
+              if coin_needle not in s:
+                  raise SystemExit('finishStage hook target not found')
+              s=s.replace(coin_needle,coin_repl,1)
+
+          # Add a manual next-question button below the model answer feedback.
+          feedback='''  <div id="feedback" class="feedback"></div>'''
+          next_ui=feedback+'''\n  <div class="controls">\n    <button class="action check hidden" id="nextBtn" type="button" onclick="continueAfterAnswer()">次の問題へ進む</button>\n  </div>'''
+          if 'id="nextBtn"' not in s:
+              if feedback not in s:
+                  raise SystemExit('feedback target not found')
+              s=s.replace(feedback,next_ui,1)
+
+          # Add helpers that show the button after an incorrect answer and guard against double taps.
+          controls='''function setControls(disabled){\n  ["resetBtn","giveupBtn","checkBtn"].forEach(id=>{const el=document.getElementById(id);if(el)el.disabled=disabled;});\n}\n'''
+          helpers=controls+'''function showNextButton(){\n  const next=document.getElementById("nextBtn");\n  if(!next)return;\n  next.classList.remove("hidden");\n  next.disabled=false;\n}\nfunction continueAfterAnswer(){\n  const next=document.getElementById("nextBtn");\n  if(!next||next.disabled)return;\n  next.disabled=true;\n  next.classList.add("hidden");\n  advanceQuestion();\n}\n'''
+          if 'function continueAfterAnswer()' not in s:
+              if controls not in s:
+                  raise SystemExit('setControls target not found')
+              s=s.replace(controls,helpers,1)
+
+          # Every newly loaded question starts with the manual-next button hidden.
+          load_start='''function loadQuestion(){\n  const item=currentItem(),q=item.q;\n  locked=false;\n'''
+          load_repl='''function loadQuestion(){\n  const item=currentItem(),q=item.q;\n  locked=false;\n  const next=document.getElementById("nextBtn");\n  if(next){next.classList.add("hidden");next.disabled=false;}\n'''
+          if 'if(next){next.classList.add("hidden");next.disabled=false;}' not in s:
+              if load_start not in s:
+                  raise SystemExit('loadQuestion target not found')
+              s=s.replace(load_start,load_repl,1)
+
+          # Incorrect answers now wait for the learner to review the model answer and tap Next.
+          wrong_old='''    fb.textContent="もう一度あとで挑戦しよう。 正解："+q.en;fb.className="feedback bad";\n    setTimeout(()=>advanceQuestion(),1100);'''
+          wrong_new='''    fb.textContent="もう一度あとで挑戦しよう。 正解："+q.en;fb.className="feedback bad";\n    showNextButton();'''
+          if wrong_old in s:
+              s=s.replace(wrong_old,wrong_new,1)
+          elif wrong_new not in s:
+              raise SystemExit('incorrect-answer transition target not found')
+
+          # "I don't know" also shows the model answer and waits for an explicit tap.
+          giveup_old='''  fb.textContent="正解："+q.en+"　あとでもう一度挑戦しよう。";fb.className="feedback bad";\n  setTimeout(()=>advanceQuestion(),1100);'''
+          giveup_new='''  fb.textContent="正解："+q.en+"　あとでもう一度挑戦しよう。";fb.className="feedback bad";\n  showNextButton();'''
+          if giveup_old in s:
+              s=s.replace(giveup_old,giveup_new,1)
+          elif giveup_new not in s:
+              raise SystemExit('give-up transition target not found')
+
           p.write_text(s,encoding='utf-8')
           PY
       - name: Commit patch
@@ -35,5 +81,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html
-          git commit -m "Connect Basic Quest to shared coin rewards"
+          git commit -m "Make Basic Quest wait after incorrect answers"
           git push
