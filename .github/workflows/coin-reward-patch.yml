@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Patch Basic Quest behavior
+      - name: Patch Basic Quest behavior and stage layout
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -73,6 +73,14 @@ jobs:
           elif giveup_new not in s:
               raise SystemExit('give-up transition target not found')
 
+          # Make stage labels readable even when the theme name is long (e.g. stages 13-22).
+          old_grid='''.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(68px,1fr));gap:7px}\n.stage{border:1px solid var(--line);background:white;border-radius:10px;padding:8px 4px;cursor:pointer;font-size:15px;font-weight:800;transition:.15s;min-height:42px}\n.stage:hover{transform:translateY(-2px);border-color:var(--accent);box-shadow:0 5px 15px rgba(53,106,230,.12)}\n.stage.done{background:#e8f7ee;border-color:#8bd0a7;color:var(--good)}\n.stage small{display:block;font-size:11px;font-weight:600;color:var(--sub);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:3px}'''
+          new_grid='''.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:8px}\n.stage{border:1px solid var(--line);background:white;border-radius:10px;padding:9px 5px;cursor:pointer;font-size:15px;font-weight:800;transition:.15s;min-height:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.15}\n.stage:hover{transform:translateY(-2px);border-color:var(--accent);box-shadow:0 5px 15px rgba(53,106,230,.12)}\n.stage.done{background:#e8f7ee;border-color:#8bd0a7;color:var(--good)}\n.stage small{display:block;font-size:10.5px;font-weight:650;color:var(--sub);white-space:normal;overflow:visible;text-overflow:clip;line-height:1.25;margin-top:5px;overflow-wrap:anywhere;text-align:center}'''
+          if new_grid not in s:
+              if old_grid not in s:
+                  raise SystemExit('stage grid CSS target not found')
+              s=s.replace(old_grid,new_grid,1)
+
           p.write_text(s,encoding='utf-8')
           PY
       - name: Commit patch
@@ -81,5 +89,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html
-          git commit -m "Make Basic Quest wait after incorrect answers"
+          git commit -m "Improve Basic Quest stage label readability"
           git push
