@@ -68,7 +68,7 @@ button.action{border:0;border-radius:9px;padding:8px 13px;font-weight:800;font-s
 <div class="wrap">
 <header>
 <h1>Basic Quest</h1>
-<div class="subtitle">WORD ORDER TRAINING · 60 STAGES<br>番号を選んで、4つの英文を完成させよう！</div>
+<div class="subtitle">WORD ORDER TRAINING · 60 STAGES · ver1.6.1<br>番号を選んで、4つの英文を完成させよう！</div>
 <div class="authbar"><button id="basicLogin" class="authbtn" type="button" disabled><span id="basicAuthDot" class="authdot busy"></span><span id="basicAuthLabel">認証準備中…</span></button><span id="basicAuthNote" class="authnote">Firebase接続中</span><button id="basicLogout" class="logoutbtn" type="button" hidden>ログアウト</button></div>
 </header>
 
@@ -114,7 +114,7 @@ const completed = new Set(JSON.parse(localStorage.getItem("english60_completed")
 
 function normalizeToken(t){return t.replace(/[.!?,]$/,"");}
 function tokenize(sentence){
-  return sentence.match(/(?:[A-Za-z]+(?:['’][A-Za-z]+)*|\d+(?:th|st|nd|rd)?|[A-Za-z]+\.|[0-9]+|[^\s]+)/g) || [];
+  return sentence.match(/(?:Mr|Mrs|Ms|Miss|Dr|Prof)\.\s+[A-Z][A-Za-z'’-]*|(?:[A-Za-z]\.){2,}|[A-Za-z]+(?:[-'’][A-Za-z]+)*|\d+(?:\.\d+)?(?:th|st|nd|rd)?/g) || [];
 }
 function shuffle(arr){
   let a=[...arr];
