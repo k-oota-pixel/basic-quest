@@ -1,4 +1,4 @@
-name: Apply Basic Quest patches
+name: Fix Basic Quest tokenization
 
 on:
   push:
@@ -13,81 +13,73 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Patch Basic Quest behavior and stage layout
+      - name: Fix word-order tokenization and audit all questions
         run: |
           python - <<'PY'
           from pathlib import Path
+          import json
+          import re
 
           p=Path('index.html')
           s=p.read_text(encoding='utf-8')
 
-          # Keep the shared coin reward script connected.
-          tag='<script type="module" src="https://k-oota-pixel.github.io/english-playroom/coin-reward.js"></script>'
-          if tag not in s:
-              s=s.replace('</body>',tag+'\n</body>')
+          old_tokenize=r'''function tokenize(sentence){
+            return sentence.match(/(?:[A-Za-z]+(?:['’][A-Za-z]+)*|\d+(?:th|st|nd|rd)?|[A-Za-z]+\.|[0-9]+|[^\s]+)/g) || [];
+          }'''
+          new_tokenize=r'''function tokenize(sentence){
+            return sentence.match(/(?:Mr|Mrs|Ms|Miss|Dr|Prof)\.\s+[A-Z][A-Za-z'’-]*|(?:[A-Za-z]\.){2,}|[A-Za-z]+(?:[-'’][A-Za-z]+)*|\d+(?:\.\d+)?(?:th|st|nd|rd)?/g) || [];
+          }'''
+          if new_tokenize not in s:
+              if old_tokenize not in s:
+                  raise SystemExit('tokenize target not found')
+              s=s.replace(old_tokenize,new_tokenize,1)
 
-          coin_needle='''  if(newlyCompleted)window.basicQuestCloud?.recordStage?.(currentStage.number);\n  else window.basicQuestCloud?.touch?.();'''
-          coin_repl=coin_needle+'''\n  window.EnglishPlayroomCoins?.awardBasic?.(currentStage.number);'''
-          if 'awardBasic?.(currentStage.number)' not in s:
-              if coin_needle not in s:
-                  raise SystemExit('finishStage hook target not found')
-              s=s.replace(coin_needle,coin_repl,1)
+          old_sub='WORD ORDER TRAINING · 60 STAGES<br>番号を選んで、4つの英文を完成させよう！'
+          new_sub='WORD ORDER TRAINING · 60 STAGES · ver1.6.1<br>番号を選んで、4つの英文を完成させよう！'
+          if new_sub not in s:
+              if old_sub not in s:
+                  raise SystemExit('version subtitle target not found')
+              s=s.replace(old_sub,new_sub,1)
 
-          # Add a manual next-question button below the model answer feedback.
-          feedback='''  <div id="feedback" class="feedback"></div>'''
-          next_ui=feedback+'''\n  <div class="controls">\n    <button class="action check hidden" id="nextBtn" type="button" onclick="continueAfterAnswer()">次の問題へ進む</button>\n  </div>'''
-          if 'id="nextBtn"' not in s:
-              if feedback not in s:
-                  raise SystemExit('feedback target not found')
-              s=s.replace(feedback,next_ui,1)
+          # Audit all 240 questions with the same tokenization rules.
+          match=re.search(r'const stages = (\[.*?\]);\nlet currentStage=',s,re.S)
+          if not match:
+              raise SystemExit('stage data not found')
+          stages=json.loads(match.group(1))
+          token_re=re.compile(r"(?:Mr|Mrs|Ms|Miss|Dr|Prof)\.\s+[A-Z][A-Za-z'’-]*|(?:[A-Za-z]\.){2,}|[A-Za-z]+(?:[-'’][A-Za-z]+)*|\d+(?:\.\d+)?(?:th|st|nd|rd)?")
+          audited=0
+          special=[]
+          for stage in stages:
+              for qi,q in enumerate(stage['questions'],1):
+                  audited+=1
+                  tokens=token_re.findall(q['en'])
+                  if any(t in {'.',',','?','!'} for t in tokens):
+                      raise SystemExit(f"standalone punctuation token remains: stage {stage['number']} q{qi}: {tokens}")
+                  if re.search(r'\b(?:Mr|Mrs|Ms|Miss|Dr|Prof)\.\s+[A-Z]',q['en']) or re.search(r'\b(?:[A-Za-z]\.){2,}',q['en']):
+                      special.append((stage['number'],qi,q['en'],tokens))
 
-          # Add helpers that show the button after an incorrect answer and guard against double taps.
-          controls='''function setControls(disabled){\n  ["resetBtn","giveupBtn","checkBtn"].forEach(id=>{const el=document.getElementById(id);if(el)el.disabled=disabled;});\n}\n'''
-          helpers=controls+'''function showNextButton(){\n  const next=document.getElementById("nextBtn");\n  if(!next)return;\n  next.classList.remove("hidden");\n  next.disabled=false;\n}\nfunction continueAfterAnswer(){\n  const next=document.getElementById("nextBtn");\n  if(!next||next.disabled)return;\n  next.disabled=true;\n  next.classList.add("hidden");\n  advanceQuestion();\n}\n'''
-          if 'function continueAfterAnswer()' not in s:
-              if controls not in s:
-                  raise SystemExit('setControls target not found')
-              s=s.replace(controls,helpers,1)
+          stage33=next(st for st in stages if st['number']==33)
+          mr_tokens=token_re.findall(stage33['questions'][1]['en'])
+          if 'Mr. Brown' not in mr_tokens or 'Mr' in mr_tokens or '.' in mr_tokens:
+              raise SystemExit(f'Mr. Brown was not kept together: {mr_tokens}')
 
-          # Every newly loaded question starts with the manual-next button hidden.
-          load_start='''function loadQuestion(){\n  const item=currentItem(),q=item.q;\n  locked=false;\n'''
-          load_repl='''function loadQuestion(){\n  const item=currentItem(),q=item.q;\n  locked=false;\n  const next=document.getElementById("nextBtn");\n  if(next){next.classList.add("hidden");next.disabled=false;}\n'''
-          if 'if(next){next.classList.add("hidden");next.disabled=false;}' not in s:
-              if load_start not in s:
-                  raise SystemExit('loadQuestion target not found')
-              s=s.replace(load_start,load_repl,1)
+          # Known dotted abbreviations in the current question set must also stay intact.
+          for expected in ('p.m.','a.m.'):
+              examples=[tokens for _,_,_,tokens in special if expected in tokens]
+              if not examples:
+                  raise SystemExit(f'{expected} audit failed')
 
-          # Incorrect answers now wait for the learner to review the model answer and tap Next.
-          wrong_old='''    fb.textContent="もう一度あとで挑戦しよう。 正解："+q.en;fb.className="feedback bad";\n    setTimeout(()=>advanceQuestion(),1100);'''
-          wrong_new='''    fb.textContent="もう一度あとで挑戦しよう。 正解："+q.en;fb.className="feedback bad";\n    showNextButton();'''
-          if wrong_old in s:
-              s=s.replace(wrong_old,wrong_new,1)
-          elif wrong_new not in s:
-              raise SystemExit('incorrect-answer transition target not found')
-
-          # "I don't know" also shows the model answer and waits for an explicit tap.
-          giveup_old='''  fb.textContent="正解："+q.en+"　あとでもう一度挑戦しよう。";fb.className="feedback bad";\n  setTimeout(()=>advanceQuestion(),1100);'''
-          giveup_new='''  fb.textContent="正解："+q.en+"　あとでもう一度挑戦しよう。";fb.className="feedback bad";\n  showNextButton();'''
-          if giveup_old in s:
-              s=s.replace(giveup_old,giveup_new,1)
-          elif giveup_new not in s:
-              raise SystemExit('give-up transition target not found')
-
-          # Make stage labels readable even when the theme name is long (e.g. stages 13-22).
-          old_grid='''.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(68px,1fr));gap:7px}\n.stage{border:1px solid var(--line);background:white;border-radius:10px;padding:8px 4px;cursor:pointer;font-size:15px;font-weight:800;transition:.15s;min-height:42px}\n.stage:hover{transform:translateY(-2px);border-color:var(--accent);box-shadow:0 5px 15px rgba(53,106,230,.12)}\n.stage.done{background:#e8f7ee;border-color:#8bd0a7;color:var(--good)}\n.stage small{display:block;font-size:11px;font-weight:600;color:var(--sub);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:3px}'''
-          new_grid='''.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:8px}\n.stage{border:1px solid var(--line);background:white;border-radius:10px;padding:9px 5px;cursor:pointer;font-size:15px;font-weight:800;transition:.15s;min-height:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.15}\n.stage:hover{transform:translateY(-2px);border-color:var(--accent);box-shadow:0 5px 15px rgba(53,106,230,.12)}\n.stage.done{background:#e8f7ee;border-color:#8bd0a7;color:var(--good)}\n.stage small{display:block;font-size:10.5px;font-weight:650;color:var(--sub);white-space:normal;overflow:visible;text-overflow:clip;line-height:1.25;margin-top:5px;overflow-wrap:anywhere;text-align:center}'''
-          if new_grid not in s:
-              if old_grid not in s:
-                  raise SystemExit('stage grid CSS target not found')
-              s=s.replace(old_grid,new_grid,1)
+          print(f'Audited {audited} questions. Special expressions:')
+          for row in special:
+              print(row)
 
           p.write_text(s,encoding='utf-8')
           PY
-      - name: Commit patch
+      - name: Commit tokenization fix
         run: |
           if git diff --quiet -- index.html; then exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html
-          git commit -m "Improve Basic Quest stage label readability"
+          git commit -m "Keep Basic Quest special expressions together"
           git push
