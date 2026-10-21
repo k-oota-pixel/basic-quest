@@ -261,6 +261,7 @@ function finishStage(){
   renderStages();
   if(newlyCompleted)window.basicQuestCloud?.recordStage?.(currentStage.number);
   else window.basicQuestCloud?.touch?.();
+  window.EnglishPlayroomCoins?.recordLearningActivity?.();
   const earnedCoin=initialCorrect>=3;
   if(earnedCoin)window.EnglishPlayroomCoins?.awardBasic?.(currentStage.number);
   document.getElementById("completeText").textContent="Stage "+currentStage.number+"「"+currentStage.word+"」をクリア！ 初回 "+initialCorrect+" / 4 問正解。"+(earnedCoin?"1コインGET！":"今回はコインなし。");
