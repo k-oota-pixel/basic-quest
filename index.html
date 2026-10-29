@@ -92,6 +92,7 @@ button.action{border:0;border-radius:9px;padding:8px 13px;font-weight:800;font-s
     <button class="action back" onclick="goHome()">← 一覧へ</button>
     <div id="progress" class="progress"></div>
   </div>
+  <div class="controls" id="grammarSaveControls"><button class="action reset" id="saveExitBtn" type="button" onclick="saveAndExitGrammar()">途中で終了して保存</button></div>
   <div id="word" class="word"></div>
   <div id="japanese" class="japanese"></div>
   <div class="hint">下の単語をクリックして、正しい英文を作ろう。</div>
@@ -124,8 +125,13 @@ const grammarStages=Array.isArray(window.grammarStages)?window.grammarStages:[];
 let currentMode="basic";
 globalThis.MonstudyMaterial?.setActivityGuard(()=>Boolean(currentStage && !document.getElementById("quizScreen").classList.contains("hidden")));
 let currentStage=null, qIndex=0, pieces=[], selected=[], currentQueue=[], retryQueue=[], initialRound=true, retryRound=0, initialCorrect=0, locked=false;
+let grammarSolved=new Set(), grammarProgress=readGrammarProgress();
 const completed = new Set(JSON.parse(localStorage.getItem("english60_completed") || "[]"));
 const grammarCompleted = new Set(JSON.parse(localStorage.getItem("english_grammar_completed") || "[]"));
+function readGrammarProgress(){try{return cleanGrammarProgress(JSON.parse(localStorage.getItem("english_grammar_progress")||"{}"));}catch{return {};}}
+function storeGrammarProgress(){localStorage.setItem("english_grammar_progress",JSON.stringify(grammarProgress));}
+function cleanGrammarProgress(value){const out={};if(!value||typeof value!=="object")return out;Object.keys(value).forEach(k=>{const n=Number(k),v=value[k];if(!Number.isInteger(n)||n<1||n>grammarStages.length||!v||typeof v!=="object")return;const solved=[...new Set((Array.isArray(v.solved)?v.solved:[]).map(Number).filter(i=>Number.isInteger(i)&&i>=0))].sort((a,b)=>a-b);out[n]={solved,completed:Boolean(v.completed),updatedAt:Number(v.updatedAt)||0};});return out;}
+
 
 function normalizeToken(t){return t.replace(/[.!?,]$/,"");}
 function tokenize(sentence){
@@ -144,16 +150,17 @@ function setMode(mode){
   document.getElementById("basicModeBtn").classList.toggle("active",currentMode==="basic");
   document.getElementById("grammarModeBtn").classList.toggle("active",currentMode==="grammar");
   document.getElementById("stageHeading").textContent=currentMode==="grammar"?"文法セクションを選択":"ステージを選択";
-  document.getElementById("progressSaveNote").textContent=currentMode==="grammar"?"✓ は文法セクションのクリア済みです。この教材の記録は基礎版と別に保存されます。":"✓ はクリア済みです。ログイン時はクラウドにも同期されます。";
+  document.getElementById("progressSaveNote").textContent=currentMode==="grammar"?"✓ は文法セクションのクリア済みです。途中で終了して保存すると、続きから再開できます。":"✓ はクリア済みです。ログイン時はクラウドにも同期されます。";
   renderStages();
 }
 function renderStages(){
   const grid=document.getElementById("stageGrid"); grid.innerHTML="";
   currentStages().forEach(s=>{
     const done=currentCompleted().has(s.number);
+    const saved=currentMode==="grammar"?grammarProgress[s.number]:null;
     const b=document.createElement("button");
     b.className="stage"+(done?" done":"");
-    b.innerHTML=(done?"✓ ":"")+s.number+"<small>"+escapeHtml(s.word)+"</small>";
+    b.innerHTML=(done?"✓ ":"")+s.number+"<small>"+escapeHtml(s.word)+(saved&&!saved.completed?" · 続き "+saved.solved.length+"/"+(s.questions?.length||0):"")+"</small>";
     b.onclick=()=>startStage(s.number);
     grid.appendChild(b);
   });
@@ -167,7 +174,9 @@ function startStage(n){
   currentStage=currentStages().find(s=>s.number===n);
   if(!currentStage||!Array.isArray(currentStage.questions)||!currentStage.questions.length)return;
   initialRound=true; retryRound=0; initialCorrect=0; retryQueue=[];
-  currentQueue=currentStage.questions.map((q,i)=>({q,index:i}));
+  grammarSolved=currentMode==="grammar"?new Set((grammarProgress[n]?.solved||[]).filter(i=>i<currentStage.questions.length)):new Set();
+  currentQueue=currentStage.questions.map((q,i)=>({q,index:i})).filter(item=>currentMode!=="grammar"||!grammarSolved.has(item.index));
+  if(!currentQueue.length){finishStage();return;}
   qIndex=0; show("quizScreen"); loadQuestion();
 }
 function playableSentence(q){return q.en.replace(/\.\s*$/,"");}
@@ -194,7 +203,8 @@ function loadQuestion(){
   const next=document.getElementById("nextBtn");
   if(next){next.classList.add("hidden");next.disabled=false;}
   document.getElementById("word").textContent=currentStage.number+". "+currentStage.word;
-  document.getElementById("progress").textContent=initialRound?(qIndex+1)+" / "+currentQueue.length:"RETRY "+retryRound+" · "+(qIndex+1)+" / "+currentQueue.length;
+  document.getElementById("grammarSaveControls").classList.toggle("hidden",currentMode!=="grammar");
+  document.getElementById("progress").textContent=currentMode==="grammar"?((initialRound?"続き · ":"再挑戦 · ")+(qIndex+1)+" / "+currentQueue.length+"（完了 "+grammarSolved.size+" / "+currentStage.questions.length+"）"):(initialRound?(qIndex+1)+" / "+currentQueue.length:"RETRY "+retryRound+" · "+(qIndex+1)+" / "+currentQueue.length);
   document.getElementById("japanese").textContent=q.ja;
   document.getElementById("feedback").textContent="";
   document.getElementById("feedback").className="feedback";
@@ -262,6 +272,7 @@ function checkAnswer(){
   locked=true;setControls(true);renderTokens();
   if(canonical(user)===canonical(correct)){
     titleQuestion(q,true);if(initialRound)initialCorrect++;
+    if(currentMode==="grammar")grammarSolved.add(item.index);
     fb.textContent="✓ Correct!";fb.className="feedback good";celebrateCorrect(false);
     setTimeout(()=>advanceQuestion(),700);
   }else{
@@ -294,6 +305,8 @@ function finishStage(){
   doneSet.add(finishedNumber);
   if(grammarMode){
     localStorage.setItem("english_grammar_completed",JSON.stringify([...grammarCompleted]));
+    grammarProgress[finishedNumber]={solved:currentStage.questions.map((_,i)=>i),completed:true,updatedAt:Date.now()};storeGrammarProgress();
+    window.basicQuestCloud?.saveGrammarProgress?.(grammarProgress)?.catch(e=>console.error("文法進捗の保存に失敗しました",e));
   }else{
     titleBasicEvent({kind:'run',itemId:String(finishedNumber),score:initialCorrect});
     localStorage.setItem("english60_completed",JSON.stringify([...completed]));
@@ -307,7 +320,24 @@ function finishStage(){
   celebrateCorrect(true);
   show("completeScreen");
 }
-function goHome(){currentStage=null;renderStages();show("selectScreen");}
+async function saveAndExitGrammar(){
+  if(currentMode!=="grammar"||!currentStage)return;
+  const button=document.getElementById("saveExitBtn");button.disabled=true;
+  grammarProgress[currentStage.number]={solved:[...grammarSolved].sort((a,b)=>a-b),completed:false,updatedAt:Date.now()};storeGrammarProgress();
+  try{
+    await window.basicQuestCloud?.saveGrammarProgress?.(grammarProgress);
+    currentStage=null;renderStages();show("selectScreen");
+  }catch(e){
+    console.error(e);alert("端末には保存しましたが、クラウド保存に失敗しました。通信を確認して、もう一度保存してください。");
+  }finally{button.disabled=false;}
+}
+function goHome(){
+  if(currentStage&&currentMode==="grammar"&&!document.getElementById("quizScreen").classList.contains("hidden")){
+    const ok=window.confirm("途中で終了して保存を押すと、次回は続きから再開できます。今一覧へ戻ると、前回保存した時点からやり直しになります。戻りますか？");
+    if(!ok)return;
+  }
+  currentStage=null;renderStages();show("selectScreen");
+}
 window.basicQuestBridge={
   getCompleted:()=>[...completed].sort((a,b)=>a-b),
   mergeCompleted:(arr)=>{
@@ -315,6 +345,18 @@ window.basicQuestBridge={
     localStorage.setItem("english60_completed",JSON.stringify([...completed]));
     renderStages();
     return [...completed].sort((a,b)=>a-b);
+  },
+  getGrammarProgress:()=>cleanGrammarProgress(grammarProgress),
+  normalizeGrammarProgress:(value)=>cleanGrammarProgress(value),
+  mergeGrammarProgress:(value)=>{
+    const incoming=cleanGrammarProgress(value);
+    Object.entries(incoming).forEach(([n,item])=>{
+      const existing=grammarProgress[n];
+      if(!existing||item.updatedAt>=existing.updatedAt)grammarProgress[n]=item;
+      if(item.completed)grammarCompleted.add(Number(n));
+    });
+    localStorage.setItem("english_grammar_completed",JSON.stringify([...grammarCompleted]));
+    storeGrammarProgress();renderStages();return cleanGrammarProgress(grammarProgress);
   }
 };
 setMode(new URLSearchParams(location.search).get("mode"));
@@ -373,6 +415,7 @@ async function saveCloud(){
   setUI("busy",shortName(currentUser),"保存中…");
   await setDoc(refFor(currentUser),{
     completedStages:completed,
+    grammarProgress:window.basicQuestBridge.getGrammarProgress(),
     completedCount:completed.length,
     lastPlayedDate,
     clientUpdatedAt:Date.now(),
@@ -387,16 +430,23 @@ async function syncCloud(user){
   if(snap.exists()){
     const d=snap.data()||{};
     window.basicQuestBridge.mergeCompleted(d.completedStages||[]);
+    const mergedGrammar=window.basicQuestBridge.mergeGrammarProgress(d.grammarProgress||{});
     if(typeof d.lastPlayedDate==="string")lastPlayedDate=d.lastPlayedDate;
     const completed=window.basicQuestBridge.getCompleted();
     const cloudCompleted=[...new Set(Array.isArray(d.completedStages)?d.completedStages:[])].sort();
-    needsUpload=JSON.stringify([...completed].sort())!==JSON.stringify(cloudCompleted)||lastPlayedDate!==(typeof d.lastPlayedDate==="string"?d.lastPlayedDate:"");
+    const cloudGrammar=window.basicQuestBridge.normalizeGrammarProgress(d.grammarProgress||{});
+    needsUpload=JSON.stringify([...completed].sort())!==JSON.stringify(cloudCompleted)||JSON.stringify(mergedGrammar)!==JSON.stringify(cloudGrammar)||lastPlayedDate!==(typeof d.lastPlayedDate==="string"?d.lastPlayedDate:"");
   }
   const completed=window.basicQuestBridge.getCompleted();
-  if(needsUpload&&(completed.length||lastPlayedDate))await saveCloud();
+  if(needsUpload&&(completed.length||lastPlayedDate||Object.keys(window.basicQuestBridge.getGrammarProgress()).length))await saveCloud();
   else{setUI("ok",shortName(user),`☁ ${completed.length} / 60`);saveNote.textContent=`✓ ${completed.length} / 60 ステージクリア。Googleアカウントに同期済みです。`;}
 }
 window.basicQuestCloud={
+  async saveGrammarProgress(){
+    if(!currentUser)return;
+    lastPlayedDate=todayKey();
+    await saveCloud();
+  },
   async recordStage(){
     lastPlayedDate=todayKey();
     try{await saveCloud();}catch(e){console.error(e);setUI("error",currentUser?shortName(currentUser):"Googleログイン","保存エラー");}
