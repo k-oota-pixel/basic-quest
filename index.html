@@ -62,7 +62,7 @@ button.action{border:0;border-radius:9px;padding:8px 13px;font-weight:800;font-s
 @keyframes celebration-spark{0%{opacity:0;transform:translate(0,0) scale(.4) rotate(0deg)}10%{opacity:1}65%{opacity:1}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(1.25) rotate(var(--rot))}}
 @media(prefers-reduced-motion:reduce){.celebration-layer{display:none}}
 
-body.basic-grammar-mode #stageGrid{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}body.basic-grammar-mode .stage small{display:block}body.basic-grammar-mode .word{font-size:clamp(24px,5vw,40px)}
+body.basic-grammar-mode #stageGrid{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}body.basic-grammar-mode .stage small{display:block}body.basic-grammar-mode .bank{justify-content:flex-start;gap:7px}body.basic-grammar-mode .bank .token{font-size:15px;padding:8px 10px}body.basic-grammar-mode .hint{line-height:1.65}body.basic-grammar-mode .word{font-size:clamp(24px,5vw,40px)}
 </style>
 <style id="monstudy-home-style">
 .monstudy-home-wrap{width:min(calc(100% - 28px),1000px);margin:10px auto 0;position:relative;z-index:20}.monstudy-home-link{display:inline-flex;align-items:center;text-decoration:none;color:#385a4e;background:#fff;border:1px solid #d6e1d8;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:800;line-height:1.2;box-shadow:0 2px 8px #203b3608}.monstudy-home-link:hover{background:#f2f6f3}.monstudy-home-link:focus-visible{outline:3px solid #e4af37;outline-offset:3px}
@@ -74,7 +74,7 @@ body.basic-grammar-mode #stageGrid{grid-template-columns:repeat(auto-fit,minmax(
 <div class="wrap">
 <header>
 <h1>Basic Quest</h1>
-<div class="subtitle">WORD ORDER TRAINING · BASIC 60 STAGES + GRAMMAR 72 SECTIONS + 基本文法 12単元 · ver1.7.1<br>教材を選んで、英文を完成させよう！</div>
+<div class="subtitle">WORD ORDER TRAINING · BASIC 60 STAGES + GRAMMAR 72 SECTIONS + 基本文法 12単元 · ver1.7.2<br>教材を選んで、英文を完成させよう！</div>
 <div class="authbar"><button id="basicLogin" class="authbtn" type="button" disabled><span id="basicAuthDot" class="authdot busy"></span><span id="basicAuthLabel">認証準備中…</span></button><span id="basicAuthNote" class="authnote">Firebase接続中</span><button id="basicLogout" class="logoutbtn" type="button" hidden>ログアウト</button></div>
 </header>
 
@@ -213,6 +213,17 @@ function continueAfterAnswer(){
   next.classList.add("hidden");
   advanceQuestion();
 }
+function sharedWordBank(stage){
+  const proper=new Set(['I','Emma','Ken','John','Jane','Hawaii','English']);
+  const words=new Map();
+  for(const q of stage.questions)for(const en of [q.en,...(q.variants||[]),...(q.acceptedAnswers||[])]){
+    for(const word of tokenize(en)){
+      const key=canonical([word]);
+      if(!words.has(key))words.set(key,proper.has(word)||/^(Mr|Mrs|Ms|Miss|Dr|Prof)\./.test(word)?word:word.toLowerCase());
+    }
+  }
+  return [...words.values()].sort((a,b)=>a.localeCompare(b,'en',{sensitivity:'base'})).map((text,id)=>({id,text}));
+}
 function loadQuestion(){
   const item=currentItem(),q=item.q;
   locked=false;
@@ -225,21 +236,22 @@ function loadQuestion(){
   document.getElementById("feedback").textContent="";
   document.getElementById("feedback").className="feedback";
   selected=[];
-  pieces=shuffle(tokenize(playableSentence(q)).map((text,id)=>({id,text})));
+  pieces=currentMode==="basic-grammar"?sharedWordBank(currentStage):shuffle(tokenize(playableSentence(q)).map((text,id)=>({id,text})));
+  document.querySelector(".hint").textContent=currentMode==="basic-grammar"?"この単元の単語を自由に選んで英文を作ろう。同じ単語は何度でも使えます。答えの単語を押すと取り消せます。":"下の単語をクリックして、正しい英文を作ろう。";
   setControls(false);
   renderTokens();
 }
 function renderTokens(){
   const bank=document.getElementById("bank"), ans=document.getElementById("answer");
   bank.innerHTML=""; ans.innerHTML="";
-  pieces.filter(p=>!selected.includes(p.id)).forEach(p=>bank.appendChild(tokenButton(p,false)));
-  selected.map(id=>pieces.find(p=>p.id===id)).filter(Boolean).forEach(p=>ans.appendChild(tokenButton(p,true)));
+  pieces.filter(p=>currentMode==="basic-grammar"||!selected.includes(p.id)).forEach(p=>bank.appendChild(tokenButton(p,false)));
+  selected.forEach((id,index)=>{const p=pieces.find(p=>p.id===id);if(p)ans.appendChild(tokenButton(p,true,index));});
 }
-function tokenButton(p,inAnswer){
+function tokenButton(p,inAnswer,index){
   const b=document.createElement("button");b.className="token";b.textContent=p.text;b.disabled=locked;
   b.onclick=()=>{
     if(locked)return;
-    if(inAnswer) selected=selected.filter(x=>x!==p.id);
+    if(inAnswer){if(currentMode==="basic-grammar")selected.splice(index,1);else selected=selected.filter(x=>x!==p.id);}
     else selected.push(p.id);
     document.getElementById("feedback").textContent="";
     renderTokens();
@@ -285,7 +297,8 @@ function checkAnswer(){
   const user=selected.map(id=>pieces.find(p=>p.id===id).text);
   const correct=tokenize(playableSentence(q));
   const fb=document.getElementById("feedback");
-  if(user.length!==correct.length){fb.textContent="まだ使っていない単語があります。";fb.className="feedback bad";return;}
+  if(currentMode==="basic-grammar"&&!user.length){fb.textContent="単語を選んで英文を作ってください。";fb.className="feedback bad";return;}
+  if(currentMode!=="basic-grammar"&&user.length!==correct.length){fb.textContent="まだ使っていない単語があります。";fb.className="feedback bad";return;}
   locked=true;setControls(true);renderTokens();
   if(answerMatches(q,user)){
     titleQuestion(q,true);if(initialRound)initialCorrect++;
