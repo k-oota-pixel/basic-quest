@@ -166,6 +166,9 @@ function setMode(mode){
   document.getElementById("grammarModeBtn").classList.toggle("active",currentMode==="grammar");
   document.getElementById("stageHeading").textContent=currentMode==="basic-grammar"?"基本文法の単元を選択（全12単元・204問）":currentMode==="grammar"?"文法セクションを選択":"ステージを選択";
   document.getElementById("progressSaveNote").textContent=isSectionMode()?"✓ は文法セクションのクリア済みです。途中で終了して保存すると、続きから再開できます。":"✓ はクリア済みです。ログイン時はクラウドにも同期されます。";
+  let rewardNote=document.getElementById('grammarRewardNote');
+  if(!rewardNote){rewardNote=document.createElement('p');rewardNote.id='grammarRewardNote';document.getElementById('progressSaveNote').after(rewardNote);}
+  rewardNote.hidden=!isSectionMode();rewardNote.textContent='🪙 その日の初回回答5問中3問以上正解で1コイン。同じ問題は1日1回。称号は回答・正解・継続で解放。';
   renderStages();
 }
 function renderStages(){
@@ -186,11 +189,11 @@ function show(id){
   ["selectScreen","quizScreen","completeScreen"].forEach(x=>document.getElementById(x).classList.toggle("hidden",x!==id));
 }
 function startStage(n){
-  titleOwner=null;
+  titleOwner=window.EnglishPlayroomCoins?.getUserId?.()||'';
   currentStage=currentStages().find(s=>s.number===n);
   if(!currentStage||!Array.isArray(currentStage.questions)||!currentStage.questions.length)return;
   initialRound=true; retryRound=0; initialCorrect=0; retryQueue=[];
-  grammarSolved=isSectionMode()&&!(currentMode==="basic-grammar"&&sectionProgress()[n]?.completed)?new Set((sectionProgress()[n]?.solved||[]).filter(i=>i<currentStage.questions.length)):new Set();
+  grammarSolved=isSectionMode()&&!sectionProgress()[n]?.completed?new Set((sectionProgress()[n]?.solved||[]).filter(i=>i<currentStage.questions.length)):new Set();
   currentQueue=currentStage.questions.map((q,i)=>({q:currentMode==="basic-grammar"?{...q,en:q.variants[Math.floor(Math.random()*q.variants.length)]}:q,index:i})).filter(item=>!isSectionMode()||!grammarSolved.has(item.index));
   if(!currentQueue.length){finishStage();return;}
   qIndex=0; show("quizScreen"); loadQuestion();
@@ -290,7 +293,11 @@ function celebrateCorrect(grand=false){
 
 let titleOwner=null;
 function titleBasicEvent(payload){const uid=window.EnglishPlayroomCoins?.getUserId?.()||'';if(titleOwner===null)titleOwner=uid;if(uid&&uid===titleOwner)window.EnglishPlayroomCoins?.recordTitleEvent?.('basic-quest',{...payload,expectedUid:titleOwner});}
-function titleQuestion(q,correct){if(currentMode!=="basic")return;titleBasicEvent({kind:'question',itemId:currentStage.number+':'+q.en,correct,first:initialRound});}
+function titleQuestion(q,correct){if(isSectionMode()){
+ const uid=window.EnglishPlayroomCoins?.getUserId?.()||'';
+ if(uid&&uid===titleOwner)window.EnglishPlayroomCoins?.recordGrammarAnswer?.(currentMode,currentStage.number+':'+currentItem().index,correct);
+ return;
+}titleBasicEvent({kind:'question',itemId:currentStage.number+':'+q.en,correct,first:initialRound});}
 function checkAnswer(){
   if(locked)return;
   const item=currentItem(),q=item.q;
@@ -315,7 +322,7 @@ function checkAnswer(){
 function giveUp(){
   if(locked)return;
   const item=currentItem(),q=item.q;
-  locked=true;setControls(true);retryQueue.push(item);renderTokens();
+  locked=true;setControls(true);titleQuestion(q,false);retryQueue.push(item);renderTokens();
   const fb=document.getElementById("feedback");
   fb.textContent="正解："+q.en+"　あとでもう一度挑戦しよう。";fb.className="feedback bad";
   showNextButton();
@@ -335,6 +342,7 @@ function finishStage(){
   const newlyCompleted=!doneSet.has(finishedNumber);
   doneSet.add(finishedNumber);
   if(grammarMode){
+    void window.EnglishPlayroomCoins?.flushGrammarAnswers?.();
     if(currentMode==="grammar")localStorage.setItem("english_grammar_completed",JSON.stringify([...grammarCompleted]));
     sectionProgress()[finishedNumber]={solved:currentStage.questions.map((_,i)=>i),completed:true,updatedAt:Date.now()};storeSectionProgress();
     window.basicQuestCloud?.saveGrammarProgress?.()?.catch(e=>console.error("文法進捗の保存に失敗しました",e));
@@ -353,6 +361,7 @@ function finishStage(){
 }
 async function saveAndExitGrammar(){
   if(!isSectionMode()||!currentStage)return;
+  void window.EnglishPlayroomCoins?.flushGrammarAnswers?.();
   const button=document.getElementById("saveExitBtn");button.disabled=true;
   if(!(currentMode==="basic-grammar"&&basicGrammarCompleted.has(currentStage.number)))sectionProgress()[currentStage.number]={solved:[...grammarSolved].sort((a,b)=>a-b),completed:false,updatedAt:Date.now()};storeSectionProgress();
   try{
@@ -363,6 +372,7 @@ async function saveAndExitGrammar(){
   }finally{button.disabled=false;}
 }
 function goHome(){
+  void window.EnglishPlayroomCoins?.flushGrammarAnswers?.();
   if(currentStage&&isSectionMode()&&!document.getElementById("quizScreen").classList.contains("hidden")){
     const ok=window.confirm("途中で終了して保存を押すと、次回は続きから再開できます。今一覧へ戻ると、前回保存した時点からやり直しになります。戻りますか？");
     if(!ok)return;
@@ -527,6 +537,7 @@ onAuthStateChanged(auth,async user=>{
 });
 </script>
 
-<script type="module" src="https://k-oota-pixel.github.io/english-playroom/coin-reward.js?v=2.1.2"></script>
+<script type="module" src="https://k-oota-pixel.github.io/english-playroom/coin-reward.js?v=2.2.3"></script>
 </body>
 </html>
+

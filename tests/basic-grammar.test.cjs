@@ -17,6 +17,15 @@ test('12 units, all 204 questions and every supplied variant are playable',()=>{
  assert.equal(a.run('answerMatches(basicGrammarStages[2].questions[5],tokenize("Yesterday I played baseball."))'),true);
  assert.equal(a.run('answerMatches(basicGrammarStages[0].questions[0],tokenize("I a am new teacher."))'),false);
 });
+
+test('grammar answers include give-up, ignore locked clicks and flush on save without basic coins',async()=>{
+ const a=app(),events=[];let flushes=0;
+ a.c.window.EnglishPlayroomCoins={getUserId:()=> 'learner',recordGrammarAnswer:(...args)=>events.push(args),flushGrammarAnswers:()=>flushes++};
+ a.run('startStage(1);giveUp();giveUp();');assert.deepEqual(events,[['basic-grammar','1:0',false]]);
+ a.run('continueAfterAnswer();selected=[];for(const t of tokenize(currentItem().q.en))selected.push(pieces.find(p=>canonical([p.text])===canonical([t])).id);checkAnswer();checkAnswer();');
+ assert.equal(events.length,2);assert.equal(events[1][2],true);
+ await a.run('saveAndExitGrammar()');assert.equal(flushes,1);
+});
 test('wrong answers retry, correct answers save/resume, existing modes stay separate',async()=>{
  const a=app();a.run('startStage(1);giveUp();');assert.equal(a.run('retryQueue.length'),1);
  a.run('continueAfterAnswer();selected=tokenize(currentItem().q.en).map(t=>pieces.find(p=>canonical([p.text])===canonical([t])&&(currentMode==="basic-grammar"||!selected.includes(p.id)))?.id);');
@@ -67,3 +76,4 @@ test('unused bank words are allowed and both short and long variants can be answ
 test('all registered answers can be built from each unit bank',()=>{
  const a=app();a.run('for(const stage of basicGrammarStages){const keys=new Set(sharedWordBank(stage).map(p=>canonical([p.text])));for(const q of stage.questions)for(const text of q.acceptedAnswers)for(const t of tokenize(text)){if(!keys.has(canonical([t])))throw Error(q.id+":"+t);}}');
 });
+
