@@ -544,7 +544,7 @@ async function saveCloud(){
     serverUpdatedAt:serverTimestamp()
   },{merge:true});
   setUI("ok",shortName(currentUser),`☁ ${completed.length} / 60`);
-  saveNote.textContent=`✓ ${completed.length} / 60 ステージクリア。Googleアカウントに同期済みです。`;
+  saveNote.textContent=`✓ ${completed.length} / 60 ステージクリア。完了した結果をクラウドに同期しました。途中保存はこの端末のみです。`;
 }
 async function syncCloud(user){
   const snap=await getDoc(refFor(user));
@@ -563,7 +563,7 @@ async function syncCloud(user){
   }
   const completed=window.basicQuestBridge.getCompleted();
   if(needsUpload&&(completed.length||lastPlayedDate||Object.keys(completedOnly(window.basicQuestBridge.getGrammarProgress())).length||Object.keys(completedOnly(window.basicQuestBridge.getBasicGrammarProgress())).length))await saveCloud();
-  else{setUI("ok",shortName(user),`☁ ${completed.length} / 60`);saveNote.textContent=`✓ ${completed.length} / 60 ステージクリア。Googleアカウントに同期済みです。`;}
+  else{setUI("ok",shortName(user),`☁ ${completed.length} / 60`);saveNote.textContent=`✓ ${completed.length} / 60 ステージクリア。完了した結果をクラウドに同期しました。途中保存はこの端末のみです。`;}
 }
 window.basicQuestCloud={
   async saveGrammarProgress(){
@@ -597,7 +597,7 @@ onAuthStateChanged(auth,async user=>{
     logoutBtn.hidden=true;loginBtn.disabled=false;
     const n=window.basicQuestBridge.getCompleted().length;
     setUI("","Googleログイン",n?`端末: ${n} / 60`:"端末保存");
-    saveNote.textContent=`✓ ${n} / 60 ステージクリア。この端末に保存中。ログインするとクラウド同期できます。`;
+    saveNote.textContent=`✓ ${n} / 60 ステージクリア。この端末に保存中。途中保存は端末のみ、完了した結果はログイン後にクラウド同期できます。`;
     return;
   }
   logoutBtn.hidden=false;loginBtn.disabled=true;
