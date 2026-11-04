@@ -562,7 +562,7 @@ async function syncCloud(user){
     needsUpload=JSON.stringify(mergedBasicGrammar)!==JSON.stringify(cloudBasicGrammar)||JSON.stringify([...completed].sort())!==JSON.stringify(cloudCompleted)||JSON.stringify(mergedGrammar)!==JSON.stringify(cloudGrammar)||lastPlayedDate!==(typeof d.lastPlayedDate==="string"?d.lastPlayedDate:"");
   }
   const completed=window.basicQuestBridge.getCompleted();
-  if(needsUpload&&(completed.length||lastPlayedDate||Object.keys(window.basicQuestBridge.getGrammarProgress()).length||Object.keys(window.basicQuestBridge.getBasicGrammarProgress()).length))await saveCloud();
+  if(needsUpload&&(completed.length||lastPlayedDate||Object.keys(completedOnly(window.basicQuestBridge.getGrammarProgress())).length||Object.keys(completedOnly(window.basicQuestBridge.getBasicGrammarProgress())).length))await saveCloud();
   else{setUI("ok",shortName(user),`☁ ${completed.length} / 60`);saveNote.textContent=`✓ ${completed.length} / 60 ステージクリア。Googleアカウントに同期済みです。`;}
 }
 window.basicQuestCloud={
