@@ -1,7 +1,26 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<style id="monstudy-access-lock">html:before{content:"ログインを確認しています…";position:fixed;inset:0;display:grid;place-content:center;background:#f6f5ef;color:#193d38;font:16px system-ui}body{visibility:hidden!important}</style><script type="module" src="https://k-oota-pixel.github.io/english-playroom/access-gate.js?v=2.3.1"></script>
+<style id="monstudy-access-lock">html:before{content:"ログインを確認しています…";position:fixed;inset:0;display:grid;place-content:center;background:#f6f5ef;color:#193d38;font:16px system-ui}body{visibility:hidden!important}
+/* MONSTUDY DARK PALETTE 2026-11-04: explicit foreground/background pairs for all three word-order modes.
+   Applied only when the parent app's SHOP background is set to dark. */
+html[data-monstudy-screen-theme="dark"]{
+  color-scheme:dark;
+  --bg:#1e222b;--card:#292f3c;--ink:#f7f5fc;--sub:#c4cedd;
+  --accent:#a8c1ff;--good:#9ae6ba;--bad:#ffada9;--line:#526076;
+}
+html[data-monstudy-screen-theme="dark"] .card{background:#292f3c;color:var(--ink);border-color:var(--line)}
+html[data-monstudy-screen-theme="dark"] .stage{background:#354153;color:var(--ink);border-color:#65738a}
+html[data-monstudy-screen-theme="dark"] .stage:hover{border-color:var(--accent)}
+html[data-monstudy-screen-theme="dark"] .stage.done{background:#224736;border-color:#68bc8a;color:#c9f8da}
+html[data-monstudy-screen-theme="dark"] .stage small{color:var(--sub)}
+html[data-monstudy-screen-theme="dark"] .bank{background:#222b38;border-color:var(--line)}
+html[data-monstudy-screen-theme="dark"] .answer{background:#222b38;border-color:#8593aa}
+html[data-monstudy-screen-theme="dark"] .token{background:#37455a;border-color:#6e809c;color:#f7f5fc}
+html[data-monstudy-screen-theme="dark"] :is(.reset,.back,.mode-button,.authbtn,.logoutbtn){background:#354153;color:#f7f5fc;border-color:#65738a}
+html[data-monstudy-screen-theme="dark"] :is(.mode-button.active,.check){background:#355fb8;color:#fff;border-color:#7299ea}
+html[data-monstudy-screen-theme="dark"] .monstudy-home-link{background:#354153;color:#f7f5fc;border-color:#65738a}
+</style><script type="module" src="https://k-oota-pixel.github.io/english-playroom/access-gate.js?v=2.3.1"></script>
 <script src="https://k-oota-pixel.github.io/english-playroom/shell-bridge.js?v=2.1.1"></script>
 
 <meta charset="UTF-8">
