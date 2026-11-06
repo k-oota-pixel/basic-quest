@@ -94,7 +94,7 @@ body.basic-grammar-mode #stageGrid{grid-template-columns:repeat(auto-fit,minmax(
 <div class="wrap">
 <header>
 <h1>Basic Quest</h1>
-<div class="subtitle">WORD ORDER TRAINING · BASIC 60 STAGES + GRAMMAR 72 SECTIONS + 基本文法 12単元 · ver1.7.2<br>教材を選んで、英文を完成させよう！</div>
+<div class="subtitle">WORD ORDER TRAINING · BASIC 60 STAGES + GRAMMAR 72 SECTIONS + 基本文法 12単元 · ver1.7.3<br>教材を選んで、英文を完成させよう！</div>
 <div class="authbar"><button id="basicLogin" class="authbtn" type="button" disabled><span id="basicAuthDot" class="authdot busy"></span><span id="basicAuthLabel">認証準備中…</span></button><span id="basicAuthNote" class="authnote">Firebase接続中</span><button id="basicLogout" class="logoutbtn" type="button" hidden>ログアウト</button></div>
 </header>
 
@@ -220,7 +220,9 @@ function startStage(n){
   if(!currentQueue.length){finishStage();return;}
   qIndex=0; show("quizScreen"); loadQuestion();
 }
-// Leave sentence-final punctuation intact here. tokenize() already ignores ordinary\n// end punctuation, while abbreviations such as a.m. / p.m. need their final dot.\nfunction playableSentence(q){return q.en;}
+// Leave sentence-final punctuation intact here. tokenize() already ignores ordinary
+// end punctuation, while abbreviations such as a.m. / p.m. need their final dot.
+function playableSentence(q){return q.en;}
 function currentItem(){return currentQueue[qIndex];}
 function setControls(disabled){
   ["resetBtn","giveupBtn","checkBtn"].forEach(id=>{const el=document.getElementById(id);if(el)el.disabled=disabled;});
