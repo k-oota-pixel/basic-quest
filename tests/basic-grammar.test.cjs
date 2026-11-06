@@ -77,3 +77,13 @@ test('all registered answers can be built from each unit bank',()=>{
  const a=app();a.run('for(const stage of basicGrammarStages){const keys=new Set(sharedWordBank(stage).map(p=>canonical([p.text])));for(const q of stage.questions)for(const text of q.acceptedAnswers)for(const t of tokenize(text)){if(!keys.has(canonical([t])))throw Error(q.id+":"+t);}}');
 });
 
+test('basic and grammar modes both render nonempty choice banks',()=>{
+ const a=app();
+ for(const mode of ['basic','grammar']){
+  a.run(`setMode("${mode}");startStage(1)`);
+  const choices=a.nodes.get('bank').children.map(b=>b.textContent);
+  assert.ok(choices.length>0,`${mode}: word bank must not be empty`);
+  assert.ok(choices.every(Boolean),`${mode}: choices must have text`);
+  assert.equal(a.run('pieces.length'),choices.length);
+ }
+});
