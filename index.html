@@ -220,7 +220,7 @@ function startStage(n){
   if(!currentQueue.length){finishStage();return;}
   qIndex=0; show("quizScreen"); loadQuestion();
 }
-function playableSentence(q){return q.en.replace(/\.\s*$/,"");}
+// Leave sentence-final punctuation intact here. tokenize() already ignores ordinary\n// end punctuation, while abbreviations such as a.m. / p.m. need their final dot.\nfunction playableSentence(q){return q.en;}
 function currentItem(){return currentQueue[qIndex];}
 function setControls(disabled){
   ["resetBtn","giveupBtn","checkBtn"].forEach(id=>{const el=document.getElementById(id);if(el)el.disabled=disabled;});
