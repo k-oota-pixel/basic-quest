@@ -87,3 +87,19 @@ test('basic and grammar modes both render nonempty choice banks',()=>{
   assert.equal(a.run('pieces.length'),choices.length);
  }
 });
+
+test('basic word-order examples keep their Japanese prompts and lesson themes aligned',()=>{
+ const a=app('basic');
+ const stages=a.run('basicStages');
+ assert.equal(stages.length,60);
+ assert.equal(stages.reduce((count,stage)=>count+stage.questions.length,0),240);
+ const say=stages.find(stage=>stage.number===35).questions[3];
+ assert.equal(say.en,'The weather report says it will rain in the afternoon.');
+ assert.equal(say.ja,'天気予報によると、午後は雨が降るそうです。');
+ const bePrepositions=stages.find(stage=>stage.number===15);
+ assert.equal(bePrepositions.questions[0].en,"I'm at home.");
+ assert.equal(bePrepositions.questions[0].ja,'私は家にいます。');
+ for(const q of bePrepositions.questions){
+  assert.match(q.en,/\b(?:at|on|in|under|over|from|to|with|by|near)\b/i);
+ }
+});
