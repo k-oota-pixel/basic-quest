@@ -94,7 +94,7 @@ body.basic-grammar-mode #stageGrid{grid-template-columns:repeat(auto-fit,minmax(
 <div class="wrap">
 <header>
 <h1>Basic Quest</h1>
-<div class="subtitle">WORD ORDER TRAINING · BASIC 60 STAGES + GRAMMAR 72 SECTIONS + 基本文法 12単元 · ver1.7.3<br>教材を選んで、英文を完成させよう！</div>
+<div class="subtitle">WORD ORDER TRAINING · BASIC 60 STAGES + GRAMMAR 72 SECTIONS + 基本文法 12単元 · ver1.7.4<br>教材を選んで、英文を完成させよう！</div>
 <div class="authbar"><button id="basicLogin" class="authbtn" type="button" disabled><span id="basicAuthDot" class="authdot busy"></span><span id="basicAuthLabel">認証準備中…</span></button><span id="basicAuthNote" class="authnote">Firebase接続中</span><button id="basicLogout" class="logoutbtn" type="button" hidden>ログアウト</button></div>
 </header>
 
@@ -275,7 +275,7 @@ function renderTokens(){
   selected.forEach((id,index)=>{const p=pieces.find(p=>p.id===id);if(p)ans.appendChild(tokenButton(p,true,index));});
 }
 function tokenButton(p,inAnswer,index){
-  const b=document.createElement("button");b.className="token";b.textContent=p.text;b.disabled=locked;
+  const b=document.createElement("button");b.className="token";b.textContent=p.text.toLowerCase();b.disabled=locked; // Hide sentence-initial capitalisation clues; keep p.text for grading.
   b.onclick=()=>{
     if(locked)return;
     if(inAnswer){if(currentMode==="basic-grammar")selected.splice(index,1);else selected=selected.filter(x=>x!==p.id);}
