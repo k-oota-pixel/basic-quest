@@ -57,8 +57,8 @@ test('cloud merge retains newer progress and sanitizes invalid units/indices',()
 test('shared unit bank stays visible, permits reuse, and removes only the clicked occurrence',()=>{
  const a=app();a.run('startStage(1)');const initial=a.nodes.get('bank').children.map(b=>b.textContent);
  const id=a.run('pieces.find(p=>p.text==="I").id');
- const button=a.nodes.get('bank').children.find(b=>b.textContent==='I');
- button.onclick();a.nodes.get('bank').children.find(b=>b.textContent==='I').onclick();
+ const button=a.nodes.get('bank').children.find(b=>b.textContent==='i');
+ button.onclick();a.nodes.get('bank').children.find(b=>b.textContent==='i').onclick();
  assert.equal(a.run('selected.length'),2);assert.deepEqual(a.nodes.get('bank').children.map(b=>b.textContent),initial);
  a.nodes.get('answer').children[1].onclick();assert.equal(a.run('selected.length'),1);
  assert.equal(a.run('selected[0]'),id);
@@ -101,5 +101,19 @@ test('basic word-order examples keep their Japanese prompts and lesson themes al
  assert.equal(bePrepositions.questions[0].ja,'私は家にいます。');
  for(const q of bePrepositions.questions){
   assert.match(q.en,/\b(?:at|on|in|under|over|from|to|with|by|near)\b/i);
+ }
+});
+
+test('all three modes show lowercase tiles without changing original answers',()=>{
+ const a=app();
+ for(const mode of ['basic','grammar','basic-grammar']){
+  a.run(`setMode("${mode}");startStage(1)`);
+  const bank=a.nodes.get('bank').children;
+  assert.ok(bank.length>0,mode);
+  assert.ok(bank.every(b=>b.textContent===b.textContent.toLowerCase()),mode);
+  const sentence=a.run('currentItem().q.en');
+  assert.match(sentence,/^[A-Z]/,mode+': source answer must remain correctly capitalized');
+  bank[0].onclick();
+  assert.equal(a.nodes.get('answer').children[0].textContent,bank[0].textContent);
  }
 });
